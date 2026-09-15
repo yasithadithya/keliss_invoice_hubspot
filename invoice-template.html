@@ -1,0 +1,631 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>KELISS commercial invoice</title>
+
+<!--
+  Approved template v15. Fonts: Space Grotesk (headlines), Inter (body).
+  PRODUCTION: base64 both fonts into @font-face rules below. A remote font is a
+  race the PDF sometimes loses, and the spec requires fonts embedded.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  @page { size: A4; margin: 0; }
+
+  :root {
+    --navy:      #1B2A3C;
+    --navy-deep: #16222f;
+    --sand:      #B9A88F;
+    --offwhite:  #F7F5F2;
+    --sand-tint: #EEE9E1;
+    --ink:       #23262b;
+    --muted:     #6b7280;
+    --hair:      #dfe3e8;
+    --void:      #b3453c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 3.1mm; line-height: 1.45; color: var(--ink);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  h1, h2, h3, .display { font-family: "Space Grotesk", "Inter", sans-serif; }
+
+  .label { font-size: 2.4mm; letter-spacing: .16em; color: var(--muted); margin-bottom: 1.5mm; }
+  .value { font-weight: 600; }
+  .r { text-align: right; }
+  .hidden { display: none !important; }
+
+  /* Sheets ---------------------------------------------------------------
+     Content is laid onto fixed A4 sheets by paginate(), so what is measured
+     on screen is exactly what prints: no block splits, and the signature
+     band always sits at the foot of the last sheet. */
+  .sheet {
+    width: 210mm; height: 297mm; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; background: #fff;
+    break-after: page; page-break-after: always;
+  }
+  .sheet:last-child { break-after: auto; page-break-after: auto; }
+  .sheet-flow { display: flow-root; padding: 0 14mm; flex: 0 0 auto; }
+  .sheet-flow > :first-child { margin-top: 0; }
+  .sheet-foot {
+    margin-top: auto; flex: 0 0 auto; background: var(--navy-deep); padding-top: 9mm;
+    clip-path: polygon(0 9mm, 100% 0, 100% 100%, 0 100%);
+  }
+  #parts { width: 210mm; }
+  #mm-probe { position: absolute; visibility: hidden; width: 1px; height: 100mm; }
+
+  .cont-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin: 0 14mm 8mm; padding: 10mm 0 3mm; border-bottom: .3mm solid var(--hair);
+  }
+  .cont-mark { font-family: "Space Grotesk", sans-serif; font-size: 5mm; font-weight: 600; letter-spacing: .12em; color: var(--navy); }
+  .cont-mark span { color: var(--sand); }
+  .cont-ref { font-size: 2.4mm; letter-spacing: .16em; color: var(--muted); }
+  .cont-ref b { color: var(--ink); font-weight: 600; }
+
+  /* 01 — header ---------------------------------------------------------- */
+  .band {
+    background: linear-gradient(115deg, var(--navy) 0%, #22354b 100%);
+    color: #fff; padding: 12mm 14mm 16mm;
+    clip-path: polygon(0 0, 100% 0, 100% 82%, 0 100%);
+  }
+  .band-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .wordmark { font-size: 9mm; font-weight: 600; letter-spacing: .12em; font-family: "Space Grotesk", sans-serif; }
+  .wordmark span { color: var(--sand); }
+  .wordmark img { height: 11mm; }
+  .legal-name { margin-top: 2mm; font-size: 2.5mm; letter-spacing: .18em; color: #a9b6c9; }
+  .doc-kind { font-size: 2.6mm; letter-spacing: .3em; color: var(--sand); }
+  .doc-no { font-size: 8mm; font-weight: 600; margin-top: 1mm; }
+  .chip {
+    display: inline-block; margin-top: 3mm; padding: 1.6mm 4mm;
+    border: .3mm solid var(--sand); color: var(--sand);
+    font-size: 2.4mm; letter-spacing: .18em;
+  }
+  .chip.paid { border-color: #8fd0a8; color: #8fd0a8; }
+  .chip.part { border-color: #e0b878; color: #e0b878; }
+
+  .watermark {
+    position: absolute; top: 120mm; left: 0; right: 0; text-align: center;
+    font-family: "Space Grotesk", sans-serif; font-size: 34mm; font-weight: 700;
+    letter-spacing: .08em; opacity: .1; transform: rotate(-22deg); z-index: 10;
+    pointer-events: none;
+  }
+  .watermark.void { color: var(--void); }
+  .watermark.draft { color: var(--muted); }
+
+  /* 02 — dates ----------------------------------------------------------- */
+  .meta {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border: .3mm solid var(--hair); background: #fff;
+    margin: -10mm 14mm 8mm; position: relative;
+    box-shadow: 0 1.5mm 4mm rgba(27, 42, 60, .08);
+  }
+  .meta > div { padding: 5mm; border-left: .3mm solid var(--hair); }
+  .meta > div:first-child { border-left: 0; }
+
+  /* 03 — parties --------------------------------------------------------- */
+  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-bottom: 8mm; }
+  .parties > div { border-left: .8mm solid var(--navy); padding-left: 5mm; }
+  .parties > div + div { border-left-color: var(--sand); }
+  .party-name { font-family: "Space Grotesk", sans-serif; font-size: 4.4mm; font-weight: 600; margin: 2mm 0; }
+  .party-line { color: var(--muted); }
+  .party-line a { color: var(--navy); }
+  .attn { color: var(--ink); font-weight: 500; }
+
+  /* 04 — trade terms ----------------------------------------------------- */
+  .terms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-bottom: 10mm; }
+  .terms > div { background: var(--offwhite); border-top: .8mm solid var(--navy); padding: 3mm 4mm; }
+  .terms > div:nth-child(even) { border-top-color: var(--sand); }
+
+  /* 05 — goods ----------------------------------------------------------- */
+  .section-head { display: flex; align-items: center; gap: 4mm; margin-bottom: 4mm; }
+  .section-head h2 { font-size: 5mm; font-weight: 600; margin: 0; }
+  .section-head::after { content: ""; flex: 1; height: .3mm; background: var(--sand); }
+
+  .grid5 { display: grid; grid-template-columns: 24mm 1fr 12mm 26mm 26mm; gap: 4mm; }
+  .cols { padding-bottom: 2mm; border-bottom: .3mm solid var(--hair); }
+  .cols div { font-size: 2.4mm; letter-spacing: .14em; color: var(--muted); }
+
+  .item { padding: 6mm 0; border-bottom: .3mm solid var(--hair); break-inside: avoid; page-break-inside: avoid; }
+  .item img { width: 24mm; height: 24mm; object-fit: cover; border: .3mm solid var(--hair); }
+  .ph {
+    width: 24mm; height: 24mm; border: .3mm solid var(--hair); background: var(--offwhite);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--sand); font-size: 2.4mm; letter-spacing: .12em;
+  }
+  .item-name { font-family: "Space Grotesk", sans-serif; font-size: 4.4mm; font-weight: 600; color: var(--navy); }
+  .item-sub { color: var(--muted); margin: 1mm 0 3mm; }
+  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 0 5mm; margin: 0; padding: 0; }
+  .features li { list-style: none; color: var(--muted); font-size: 2.8mm; }
+  .features li::before { content: "–"; color: var(--sand); margin-right: 1.5mm; }
+  .note-box { margin-top: 3mm; padding: 2.5mm 3mm; background: var(--sand-tint); font-size: 2.8mm; }
+  .was { color: var(--muted); text-decoration: line-through; }
+  .save { display: inline-block; margin-top: 1.5mm; padding: 1mm 2mm; background: var(--sand-tint); font-size: 2.4mm; letter-spacing: .04em; white-space: nowrap; }
+  .amount { font-family: "Space Grotesk", sans-serif; font-size: 4.6mm; font-weight: 600; }
+
+  /* 06 / 07 — pay + totals ----------------------------------------------- */
+  .settle { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 10mm; break-inside: avoid; }
+  .pay-panel {
+    background: linear-gradient(135deg, var(--navy) 0%, #243850 100%);
+    color: #fff; padding: 7mm; position: relative; overflow: hidden;
+  }
+  .pay-panel::before, .pay-panel::after {
+    content: ""; position: absolute; border-radius: 50%;
+    border: .3mm solid rgba(185, 168, 143, .22); pointer-events: none;
+  }
+  .pay-panel::before { width: 44mm; height: 44mm; top: -18mm; right: -14mm; }
+  .pay-panel::after  { width: 28mm; height: 28mm; top: -10mm; right: -6mm; }
+  .pay-panel > * { position: relative; }
+  .pay-panel h3 { margin: 0 0 3mm; font-size: 5mm; font-weight: 600; }
+  .pay-panel p { color: #c2ccdb; margin: 0 0 5mm; }
+  .pay-cta { background: var(--offwhite); color: var(--ink); text-align: center; padding: 4mm; text-decoration: none; display: block; }
+  .pay-cta strong { font-family: "Space Grotesk", sans-serif; font-size: 5mm; }
+  .pay-cta small { display: block; color: var(--muted); margin-top: 1mm; }
+  .pay-foot { color: #c2ccdb; font-size: 2.7mm; text-align: center; margin-top: 4mm; }
+  .paid-panel { text-align: center; padding: 6mm 0 2mm; }
+  .paid-mark { font-family: "Space Grotesk", sans-serif; font-size: 11mm; font-weight: 700; letter-spacing: .1em; color: #8fd0a8; }
+
+  .totals { background: var(--offwhite); border: .3mm solid var(--hair); padding: 6mm; }
+  .totals .row { display: flex; justify-content: space-between; padding: 2.5mm 0; border-bottom: .3mm solid var(--hair); }
+  .totals .row:last-of-type { border-bottom: 0; }
+  .totals #row-discount { color: var(--sand); }
+  .totals .grand { border-top: .8mm solid var(--navy); padding-top: 4mm; margin-top: 2mm; display: flex; justify-content: space-between; align-items: baseline; }
+  .totals .grand strong { font-family: "Space Grotesk", sans-serif; font-size: 8mm; font-weight: 600; }
+  .saved { background: var(--sand-tint); margin: 4mm -6mm -6mm; padding: 4mm 6mm; display: flex; justify-content: space-between; align-items: baseline; color: var(--sand); }
+  .saved strong { font-family: "Space Grotesk", sans-serif; font-size: 5mm; }
+
+  /* 08 / 09 — bank + notes ------------------------------------------------ */
+  .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 10mm; break-inside: avoid; }
+  .kv { display: grid; grid-template-columns: 30mm 1fr; gap: 2mm 4mm; margin: 0; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-weight: 600; }
+  .delivery p { margin: 0 0 3mm; color: var(--muted); }
+  .delivery strong { color: var(--ink); }
+
+  /* 10 / 11 — signature + legal ------------------------------------------- */
+  .signoff {
+    color: #fff; padding: 6mm 14mm 6mm;
+    display: flex; justify-content: space-between; align-items: center; gap: 8mm;
+  }
+  .rep { display: flex; align-items: center; gap: 5mm; flex: 1 1 auto; min-width: 0; }
+  .rep img.avatar { width: 18mm; height: 18mm; border-radius: 50%; object-fit: cover; border: .5mm solid var(--sand); }
+  .initials {
+    width: 18mm; height: 18mm; border-radius: 50%; border: .5mm solid var(--sand);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Space Grotesk", sans-serif; font-size: 6mm; color: var(--sand);
+  }
+  .rep-name { font-family: "Space Grotesk", sans-serif; font-size: 5.5mm; font-weight: 600; }
+  .rep-title { font-size: 2.4mm; letter-spacing: .16em; color: var(--sand); margin: .5mm 0 2mm; }
+  .rep-contact { color: #c2ccdb; line-height: 1.6; }
+  .rep-contact a { color: inherit; text-decoration: none; }
+  .sig { text-align: center; flex: 0 0 60mm; }
+  .sig .label { white-space: nowrap; }
+  .sig img { height: 12mm; filter: brightness(0) invert(1); }
+  .sig .typed { font-style: italic; padding-bottom: 2mm; color: #d9dfe8; }
+  .sig-line { border-bottom: .3mm solid var(--sand); padding-bottom: 2mm; }
+  .fineprint { color: #8494ab; font-size: 2.3mm; margin: 0 14mm; padding: 2mm 0 8mm; border-top: .3mm solid rgba(255, 255, 255, .06); }
+</style>
+
+<body>
+  <div id="mm-probe"></div>
+  <div id="sheets"></div>
+
+  <!-- Blocks in spec order (sections 01–11). paginate() moves them onto sheets. -->
+  <div id="parts">
+    <div id="watermark" class="watermark hidden"></div>
+
+    <div id="blk-top">
+      <!-- 01 header -->
+      <header class="band">
+        <div class="band-row">
+          <div>
+            <div class="wordmark" id="wordmark"><span>K</span>ELISS</div>
+            <div class="legal-name" id="legal-name"></div>
+          </div>
+          <div class="r">
+            <div class="doc-kind" id="doc-kind">COMMERCIAL INVOICE</div>
+            <div class="label" style="margin-top:3mm;color:#a9b6c9">INVOICE NO.</div>
+            <div class="doc-no display" id="doc-no">—</div>
+            <div><span class="chip" id="chip">AWAITING PAYMENT</span></div>
+          </div>
+        </div>
+      </header>
+
+      <!-- 02 dates -->
+      <div class="meta">
+        <div><div class="label">DATE ISSUED</div><div class="value" id="issued">—</div></div>
+        <div><div class="label">PAYMENT DUE</div><div class="value" id="due">—</div></div>
+        <div><div class="label">CURRENCY</div><div class="value" id="currency">—</div></div>
+      </div>
+    </div>
+
+    <!-- 03 parties -->
+    <div class="parties" id="blk-parties">
+      <div>
+        <div class="label">SELLER</div>
+        <div class="party-name" id="seller-name"></div>
+        <div id="seller-lines"></div>
+        <div class="party-line" id="seller-reg"></div>
+      </div>
+      <div>
+        <div class="label">BILL TO</div>
+        <div class="party-name" id="bill-name">—</div>
+        <div class="party-line attn hidden" id="bill-attn"></div>
+        <div id="bill-lines"></div>
+      </div>
+    </div>
+
+    <!-- 04 trade terms -->
+    <div class="terms" id="blk-terms">
+      <div><div class="label">INCOTERMS</div><div class="value" id="incoterm">—</div></div>
+      <div><div class="label">DESTINATION</div><div class="value" id="destination">—</div></div>
+      <div><div class="label">LEAD TIME</div><div class="value" id="lead-time">—</div></div>
+      <div><div class="label">PAYMENT TERMS</div><div class="value" id="payment-terms">—</div></div>
+    </div>
+
+    <!-- 05 goods -->
+    <div id="blk-goods-head">
+      <div class="section-head"><h2>Goods</h2></div>
+      <div class="cols grid5">
+        <div>PRODUCT</div><div>MODEL &amp; SPECIFICATION</div>
+        <div class="r">QTY</div><div class="r">UNIT PRICE</div><div class="r">AMOUNT</div>
+      </div>
+    </div>
+    <div id="items"></div>
+
+    <!-- 06 + 07 -->
+    <div class="settle" id="blk-settle">
+      <div class="pay-panel" id="pay-panel">
+        <h3>Pay online</h3>
+        <p id="pay-blurb"></p>
+        <a class="pay-cta" id="pay-cta" href="#">
+          <strong id="pay-amount">—</strong>
+          <small id="card-brands"></small>
+        </a>
+        <div class="pay-foot">Or transfer to the bank account below, quoting invoice <span id="pay-ref">—</span></div>
+      </div>
+
+      <div class="totals">
+        <div class="row"><span>Gross value</span><span id="t-gross">—</span></div>
+        <div class="row" id="row-discount"><span id="t-discount-label">Trade discount</span><span id="t-discount">—</span></div>
+        <div class="row"><span>Subtotal</span><span id="t-subtotal">—</span></div>
+        <div class="row" id="row-fees"><span>Shipping, duties &amp; handling</span><span id="t-fees">—</span></div>
+        <div class="row" id="row-tax"><span>Tax</span><span id="t-tax">—</span></div>
+        <div class="row hidden" id="row-paid"><span>Paid to date</span><span id="t-paid">—</span></div>
+        <div class="row hidden" id="row-balance"><span>Balance due</span><span id="t-balance">—</span></div>
+        <div class="grand"><span class="label">TOTAL DUE</span><strong id="t-total">—</strong></div>
+        <div class="saved" id="row-saved">
+          <span class="label">YOU SAVED</span>
+          <span><strong id="t-saved">—</strong> <span id="t-saved-pct" style="font-size:2.7mm"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 08 + 09 -->
+    <div class="footer-grid" id="blk-notes">
+      <div>
+        <div class="label">BANK TRANSFER</div>
+        <dl class="kv" id="bank"></dl>
+      </div>
+      <div class="delivery">
+        <div class="label">PAYMENT &amp; DELIVERY</div>
+        <p><strong>How to pay.</strong> <span id="how-to-pay"></span></p>
+        <p><strong>Delivery.</strong> <span id="delivery-note"></span></p>
+        <p><strong>Dispatch.</strong> <span id="dispatch-note"></span></p>
+        <p id="policy-line"></p>
+        <p id="comments" class="hidden"></p>
+      </div>
+    </div>
+
+    <!-- 10 signature + 11 legal: pinned to the foot of the last sheet -->
+    <footer class="sheet-foot" id="blk-foot">
+      <div class="signoff">
+        <div class="rep">
+          <div id="rep-avatar"></div>
+          <div>
+            <div class="rep-name" id="rep-name">—</div>
+            <div class="rep-title hidden" id="rep-title"></div>
+            <div class="rep-contact" id="rep-contact"></div>
+          </div>
+        </div>
+        <div class="sig">
+          <div class="sig-line" id="sig-mark"></div>
+          <div class="label" style="color:#a9b6c9;margin-top:2mm">
+            AUTHORISED SIGNATURE · <span id="sig-date">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="fineprint" id="legal-line"></div>
+    </footer>
+  </div>
+
+  <!-- Running header for continuation sheets -->
+  <template id="cont-head-tpl">
+    <div class="cont-head">
+      <div class="cont-mark"><span>K</span>ELISS</div>
+      <div class="cont-ref">INVOICE <b class="cont-no"></b> · <span class="cont-page"></span></div>
+    </div>
+  </template>
+
+<script>
+/**
+ * window.renderInvoice(data) — called by the worker after setContent().
+ * Payload shape is documented in worker.js buildPayload(). Returns a promise
+ * that resolves once fonts are loaded and the sheets are laid out.
+ *
+ * Spec rules implemented here:
+ *   - rows hide when zero (discount, fees, tax, savings)
+ *   - pay box becomes a PAID panel when paid, disappears on draft and void
+ *   - draft and void carry a watermark
+ *   - missing photo renders a placeholder tile, missing signature a typed name
+ *   - part paid adds "Paid to date" and "Balance due" rows
+ *   - a goods block never splits across pages
+ */
+window.renderInvoice = async function (data) {
+  const cur = data.invoice.currency || "EUR";
+  const money = (n) => new Intl.NumberFormat(data.invoice.numberLocale || "en-IE",
+    { style: "currency", currency: cur }).format(Number(n || 0));
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text ?? ""; };
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.classList.toggle("hidden", !on); };
+  const has = (v) => v !== null && v !== undefined && v !== "";
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const inv = data.invoice;
+  const t = data.totals || {};
+  const co = data.company || {};
+  const rep = data.rep || {};
+
+  /* 01 header ---------------------------------------------------------- */
+  if (co.logoUrl) {
+    document.getElementById("wordmark").innerHTML = '<img src="' + esc(co.logoUrl) + '" alt="KELISS">';
+  }
+  set("legal-name", (co.legalName || "").toUpperCase());
+  set("doc-kind", (inv.documentType || "Commercial invoice").toUpperCase());
+  set("doc-no", inv.number);
+  set("pay-ref", inv.number);
+  document.getElementById("cont-head-tpl").content.querySelector(".cont-no").textContent = inv.number || "";
+
+  const chip = document.getElementById("chip");
+  chip.textContent = inv.statusLabel || "";
+  chip.className = "chip" + (inv.state === "paid" ? " paid" : inv.state === "part_paid" ? " part" : "");
+  show("chip", inv.state !== "draft" && inv.state !== "voided");
+
+  if (inv.state === "draft" || inv.state === "voided") {
+    const wm = document.getElementById("watermark");
+    wm.textContent = inv.state === "draft" ? "DRAFT" : "VOID";
+    wm.className = "watermark " + (inv.state === "draft" ? "draft" : "void");
+  }
+
+  /* 02 dates ----------------------------------------------------------- */
+  set("issued", inv.issuedAtLabel);
+  set("due", inv.dueAtLabel);
+  set("currency", inv.currencyLabel || cur);
+
+  /* 03 parties --------------------------------------------------------- */
+  set("seller-name", co.sellerName);
+  document.getElementById("seller-lines").innerHTML =
+    (co.sellerLines || []).map((l) => '<div class="party-line">' + esc(l) + "</div>").join("");
+  set("seller-reg", co.registrationNo ? "Reg. No. " + co.registrationNo : "");
+
+  set("bill-name", data.billTo.name || "—");
+  show("bill-attn", has(data.billTo.attn));
+  set("bill-attn", data.billTo.attn ? "Attn. " + data.billTo.attn : "");
+  document.getElementById("bill-lines").innerHTML =
+    (data.billTo.lines || []).map((l) => '<div class="party-line">' + esc(l) + "</div>").join("") +
+    (data.billTo.email
+      ? '<div class="party-line"><a href="mailto:' + esc(data.billTo.email) + '">' +
+        esc(data.billTo.email) + "</a></div>"
+      : "");
+
+  /* 04 trade terms ----------------------------------------------------- */
+  set("incoterm", inv.incotermLabel || "—");
+  set("destination", inv.destination || "—");
+  set("lead-time", inv.leadTimeLabel || "—");
+  set("payment-terms", inv.paymentTerms || "—");
+
+  /* 05 goods ----------------------------------------------------------- */
+  document.getElementById("items").innerHTML = (data.items || []).map((it) => {
+    const photo = it.imageUrl
+      ? '<img src="' + it.imageUrl + '" alt="">'
+      : '<div class="ph">NO IMAGE</div>';
+    const subtitle =
+      (it.sku ? "SKU <strong>" + esc(it.sku) + "</strong>" : "") +
+      (it.sku && it.subtitle ? " · " : "") + esc(it.subtitle || "");
+    const features = (it.features || []).length
+      ? '<ul class="features">' + it.features.map((f) => "<li>" + esc(f) + "</li>").join("") + "</ul>"
+      : "";
+    const note = it.note ? '<div class="note-box">' + esc(it.note) + "</div>" : "";
+    const struck = it.listPrice && it.listPrice > it.unitPrice
+      ? '<div class="was">' + money(it.listPrice) + "</div>" : "";
+    const badge = it.savePerUnit
+      ? '<div class="save">SAVE ' + money(it.savePerUnit) + " EACH</div>" : "";
+
+    return '<div class="item grid5">' +
+      "<div>" + photo + "</div>" +
+      '<div><div class="item-name">' + esc(it.name) + "</div>" +
+        '<div class="item-sub">' + subtitle + "</div>" + features + note + "</div>" +
+      '<div class="r">' + it.qty + "</div>" +
+      '<div class="r">' + struck + "<div>" + money(it.unitPrice) + "</div>" + badge + "</div>" +
+      '<div class="r amount">' + money(it.amount) + "</div>" +
+    "</div>";
+  }).join("");
+
+  /* 06 pay online ------------------------------------------------------ */
+  const panel = document.getElementById("pay-panel");
+  const cardBrands = inv.cardBrands || [];
+  if (inv.state === "voided" || inv.state === "draft") {
+    panel.classList.add("hidden");
+  } else if (inv.state === "paid") {
+    panel.innerHTML =
+      '<div class="paid-panel"><div class="paid-mark">PAID</div>' +
+      '<p style="color:#c2ccdb;margin-top:3mm">Thank you. This invoice is settled in full; ' +
+      "no further payment is due.</p></div>";
+  } else {
+    set("pay-blurb",
+      (cardBrands.length
+        ? "Card payment is processed securely through our HubSpot checkout."
+        : "Pay securely online through our HubSpot checkout.") +
+      (inv.allowPartial ? " Partial payments are accepted on this invoice." : ""));
+    set("pay-amount", (inv.state === "part_paid" ? "Pay remaining " : "Pay ") +
+      money(has(t.balanceDue) ? t.balanceDue : t.total));
+    set("card-brands", cardBrands.join(" · "));
+    show("card-brands", cardBrands.length > 0);
+    const cta = document.getElementById("pay-cta");
+    if (inv.payLink) cta.href = inv.payLink; else cta.removeAttribute("href");
+  }
+
+  /* 07 totals ---------------------------------------------------------- */
+  set("t-gross", money(t.gross));
+  set("t-discount-label", "Trade discount" + (t.discountPct ? " (" + t.discountPct + "%)" : ""));
+  set("t-discount", "−" + money(t.discounts));
+  set("t-subtotal", money(t.subtotal));
+  set("t-fees", money(t.fees));
+  set("t-tax", money(t.taxes));
+  set("t-total", money(t.total));
+  set("t-saved", money(t.discounts));
+  set("t-saved-pct", t.discountPct ? t.discountPct + "% off list" : "");
+
+  show("row-discount", t.discounts > 0);
+  show("row-saved", t.discounts > 0);
+  show("row-fees", t.fees > 0);
+  show("row-tax", t.taxes > 0);
+
+  const partPaid = inv.state === "part_paid";
+  show("row-paid", partPaid);
+  show("row-balance", partPaid);
+  if (partPaid) {
+    set("t-paid", money(t.paidToDate));
+    set("t-balance", money(t.balanceDue));
+  }
+
+  /* 08 bank ------------------------------------------------------------ */
+  const bank = data.bank || {};
+  document.getElementById("bank").innerHTML = [
+    ["Account name", bank.accountName], ["Account number", bank.accountNumber],
+    ["Bank", bank.bank], ["Address", bank.address],
+    ["SWIFT / BIC", bank.swift], ["Routing", bank.routing],
+    ["Currencies", bank.currencies],
+  ].filter(([, v]) => has(v))
+   .map(([k, v]) => "<dt>" + esc(k) + "</dt><dd>" + esc(v) + "</dd>").join("");
+
+  /* 09 notes ----------------------------------------------------------- */
+  set("how-to-pay", inv.howToPay);
+  set("delivery-note", inv.deliveryNote);
+  set("dispatch-note", inv.dispatchNote);
+  set("policy-line", co.policyLine);
+  show("comments", has(inv.comments));
+  set("comments", inv.comments);
+
+  /* 10 signature ------------------------------------------------------- */
+  document.getElementById("rep-avatar").innerHTML = rep.photoUrl
+    ? '<img class="avatar" src="' + rep.photoUrl + '" alt="">'
+    : '<div class="initials">' + esc(rep.initials || "—") + "</div>";
+  set("rep-name", rep.name || "—");
+  set("rep-title", (rep.title || "").toUpperCase());
+  show("rep-title", has(rep.title));
+  // Spec p.10: email on its own line, then phone · WhatsApp · site.
+  const reach = [rep.phone, rep.whatsapp ? "WhatsApp " + rep.whatsapp : null, co.site].filter(Boolean).join(" · ");
+  document.getElementById("rep-contact").innerHTML =
+    (rep.email ? '<div><a href="mailto:' + esc(rep.email) + '">' + esc(rep.email) + "</a></div>" : "") +
+    (reach ? "<div>" + esc(reach) + "</div>" : "");
+
+  document.getElementById("sig-mark").innerHTML = rep.signatureUrl
+    ? '<img src="' + rep.signatureUrl + '" alt="">'
+    : '<div class="typed">' + esc(rep.name || "") + "</div>";
+  set("sig-date", inv.signatureDateLabel);
+
+  /* 11 legal ----------------------------------------------------------- */
+  set("legal-line", co.legalLine);
+
+  // Heights depend on the final fonts and images, so lay out sheets last.
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((img) =>
+    img.complete ? null : new Promise((done) => { img.onload = img.onerror = done; })));
+  paginate();
+};
+
+/**
+ * Moves the blocks from #parts onto A4 sheets in spec order. A block that
+ * does not fit starts a new sheet; the goods header repeats on continuation
+ * sheets; sections 10–11 sit at the foot of the last sheet.
+ */
+function paginate() {
+  const $ = (id) => document.getElementById(id);
+  const mm = $("mm-probe").getBoundingClientRect().height / 100;
+  const RESERVE = 12 * mm;  // bottom margin on every sheet
+  const FOOT_GAP = 10 * mm; // minimum space above the signature band
+
+  const sheets = $("sheets");
+  const wm = $("watermark");
+  const foot = $("blk-foot");
+  const goodsHead = $("blk-goods-head");
+  const items = [...$("items").children];
+
+  const groups = [
+    { nodes: [$("blk-parties")] },
+    { nodes: [$("blk-terms")] },
+    { nodes: items.length ? [goodsHead, items[0]] : [goodsHead] }, // header stays with its first item
+    ...items.slice(1).map((it) => ({ nodes: [it], goods: true })),
+    { nodes: [$("blk-settle")] },
+    { nodes: [$("blk-notes")] },
+  ];
+
+  const newSheet = (first) => {
+    const sheet = document.createElement("section");
+    sheet.className = "sheet";
+    if (!wm.classList.contains("hidden")) {
+      const copy = wm.cloneNode(true);
+      copy.removeAttribute("id");
+      sheet.appendChild(copy);
+    }
+    sheet.appendChild(first ? $("blk-top") : $("cont-head-tpl").content.firstElementChild.cloneNode(true));
+    const flow = document.createElement("div");
+    flow.className = "sheet-flow";
+    sheet.appendChild(flow);
+    sheets.appendChild(sheet);
+    return { sheet, flow };
+  };
+  const bottom = (el) => el.getBoundingClientRect().bottom;
+  const overflows = (s) => bottom(s.flow) > bottom(s.sheet) - RESERVE;
+
+  let cur = newSheet(true);
+  for (const g of groups) {
+    g.nodes.forEach((n) => cur.flow.appendChild(n));
+    if (overflows(cur) && cur.flow.children.length > g.nodes.length) {
+      cur = newSheet(false);
+      if (g.goods) {
+        const again = goodsHead.cloneNode(true);
+        again.removeAttribute("id");
+        again.querySelector("h2").textContent = "Goods (continued)";
+        cur.flow.appendChild(again);
+      }
+      g.nodes.forEach((n) => cur.flow.appendChild(n));
+    }
+  }
+
+  // Signature band + legal line at the foot of the last sheet. If there is no
+  // room, carry the bank/notes block over with it rather than strand the band.
+  cur.sheet.appendChild(foot);
+  if (bottom(cur.flow) + FOOT_GAP > foot.getBoundingClientRect().top) {
+    const notes = $("blk-notes");
+    const prev = cur;
+    cur = newSheet(false);
+    if (notes.parentNode === prev.flow && prev.flow.children.length > 1) cur.flow.appendChild(notes);
+    cur.sheet.appendChild(foot);
+  }
+
+  const all = [...sheets.children];
+  all.forEach((s, i) => s.querySelectorAll(".cont-page")
+    .forEach((p) => { p.textContent = "PAGE " + (i + 1) + " OF " + all.length; }));
+  $("parts").remove();
+}
+</script>
+</body>

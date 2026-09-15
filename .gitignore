@@ -1,0 +1,6 @@
+.env
+node_modules/
+*.pdf
+*.woff2
+*.b64
+poppins.css
