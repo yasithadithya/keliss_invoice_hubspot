@@ -5,7 +5,9 @@
  * (hs_invoice_status → open) or a rep flags Branded PDF = Generate. The
  * worker acknowledges at once, then renders the branded PDF from
  * invoice-template.html, uploads it to the Files API, attaches it to the
- * invoice and its deal as a note, and writes the URL + status back.
+ * invoice and its deal as a note, and writes the URL + status back. When the
+ * buyer pays through the PDF's Pay link (HubSpot checkout), the PDF is
+ * re-issued as PAID or part-paid.
  *
  * A slow reconcile search (every 10 minutes by default) catches anything a
  * webhook delivery missed. API budget: ~150 calls a day at idle plus under
@@ -90,6 +92,7 @@ const INVOICE_PROPS = [
   "keliss_document_type",
   "branded_pdf_status",
   "branded_pdf_url",
+  "branded_pdf_paid_amount", // hs_amount_paid as printed on the latest PDF
 ];
 
 // Must match the dropdown's internal option values exactly.
@@ -347,6 +350,12 @@ async function buildPayload(invoice) {
   const cardBrands = methods.map((m) => CONFIG.cardBrandLabels[m]).filter(Boolean);
 
   const state = deriveState(p.hs_invoice_status, billed, balance);
+  const payLink = p.hs_invoice_link || null;
+  const payable = state === "awaiting" || state === "part_paid";
+  if (payable) {
+    if (!payLink) console.warn("  ↳ no hs_invoice_link — pay button hidden");
+    else if (!methods.length) console.warn("  ↳ no online payment methods enabled — buyer can view but not pay online");
+  }
   const invoiceNumber = buildInvoiceNumber(p.keliss_invoice_number, p.hs_number, rep.initials);
 
   return {
@@ -380,10 +389,11 @@ async function buildPayload(invoice) {
       paymentTerms: termDays === null ? null
         : termDays <= 0 ? S.notes.dueOnReceipt
         : i18n.fmt(S.notes.netDays, { days: termDays }),
-      payLink: p.hs_invoice_link || null,
+      payLink,
       allowPartial: p.hs_allow_partial_payments === "true",
       cardBrands,
-      howToPay: cardBrands.length ? S.notes.howToPayCard : S.notes.howToPaySwift,
+      // "the button above" only makes sense when the button is printed.
+      howToPay: payable && payLink && cardBrands.length ? S.notes.howToPayCard : S.notes.howToPaySwift,
       deliveryNote: incoterm?.delivery || null,
       dispatchNote: leadDays
         ? i18n.fmt(S.notes.dispatchWithLead, { days: leadDays })
@@ -550,13 +560,23 @@ async function associateNote(noteId, toType, toId) {
   return typed.ok;
 }
 
-async function attachNote({ fileId, invoiceId, dealId, contactId, invoiceNumber }) {
+function noteBody(payload) {
+  const { number, state, currency } = payload.invoice;
+  if (state === "paid") return `Payment received — invoice ${number} re-issued as PAID.`;
+  if (state === "part_paid") {
+    const balance = `${currency} ${payload.totals.balanceDue.toFixed(2)}`;
+    return `Part payment received — invoice ${number} re-issued (balance ${balance}).`;
+  }
+  return `Branded commercial invoice ${number} generated.`;
+}
+
+async function attachNote({ fileId, invoiceId, dealId, contactId, body }) {
   const note = await hs("/crm/v3/objects/notes", {
     method: "POST",
     body: JSON.stringify({
       properties: {
         hs_timestamp: Date.now(),
-        hs_note_body: `Branded commercial invoice ${invoiceNumber} generated.`,
+        hs_note_body: body,
         hs_attachment_ids: String(fileId),
       },
     }),
@@ -610,7 +630,7 @@ async function processOne(browser, invoice) {
     invoiceId: id,
     dealId: payload.dealId,
     contactId: payload.contactId,
-    invoiceNumber: number,
+    body: noteBody(payload),
   });
 
   await surfaceOnDeal({
@@ -625,6 +645,8 @@ async function processOne(browser, invoice) {
     // Issue once, then always read back — never renumber (spec p.11).
     ...(payload.issuedNumber ? { keliss_invoice_number: payload.issuedNumber } : {}),
     branded_pdf_url: file.url,
+    // What the PDF now shows as paid; decide() re-issues only when this differs.
+    branded_pdf_paid_amount: String(payload.totals.paidToDate),
     branded_pdf_generated_at: new Date().setUTCHours(0, 0, 0, 0),
     branded_pdf_error: "",
   });
@@ -651,7 +673,7 @@ const stats = {
 // event for an id already waiting only upgrades its reason; a second event
 // for an id currently rendering re-queues it, and the fresh read in handle()
 // decides whether there is anything left to do.
-const REASON_RANK = { reconcile: 0, created: 1, finalised: 2, manual: 3 };
+const REASON_RANK = { reconcile: 0, created: 1, payment: 2, finalised: 3, manual: 4 };
 const queue = new Map();
 let inFlight = null;
 let draining = null;
@@ -693,6 +715,21 @@ const readInvoice = (id) =>
  */
 function decide(p, reason) {
   if (p.branded_pdf_status === STATUS.queued) return { go: true, why: "flagged Generate" };
+
+  // A payment landed on an invoice we already branded: re-issue it as PAID or
+  // part-paid, once per paid amount. Never-branded invoices are left alone.
+  const paid = Number(p.hs_amount_paid || 0);
+  const printed = Number(p.branded_pdf_paid_amount || 0);
+  const hasPayment = p.hs_invoice_status === "paid" || (p.hs_invoice_status === "open" && paid > 0);
+  // Paid but never re-issued is what reconcile searches for, so it must always go.
+  const stale = paid !== printed || (p.hs_invoice_status === "paid" && !p.branded_pdf_paid_amount);
+  if (hasPayment && p.branded_pdf_url && stale) {
+    return { go: true, why: `payment received (${printed} → ${paid} paid) — re-issuing` };
+  }
+  if (reason === "payment") {
+    return { go: false, why: hasPayment ? `PDF already shows ${printed} paid` : "no payment on record" };
+  }
+
   if (!AUTO_ON_FINALISE) return { go: false, why: "not flagged Generate (AUTO_ON_FINALISE=false)" };
   if (p.hs_invoice_status !== "open") return { go: false, why: `status is ${p.hs_invoice_status || "empty"}, not open` };
   if (p.branded_pdf_url) return { go: false, why: "already has a branded PDF" };
@@ -704,7 +741,8 @@ function decide(p, reason) {
 async function handle(id, reason) {
   // The finalise event can land a beat before HubSpot has finished writing
   // the record it describes. Give it a moment before reading.
-  if (reason === "finalised" || reason === "created") await sleep(SETTLE_MS);
+  // Same for a payment: hs_amount_paid and hs_balance_due can trail the status.
+  if (reason === "finalised" || reason === "created" || reason === "payment") await sleep(SETTLE_MS);
 
   let got = await readInvoice(id);
   if (!got.ok) {
@@ -714,9 +752,11 @@ async function handle(id, reason) {
     return;
   }
 
-  // Finalising assigns hs_number; if we read before that landed, read again.
+  // Finalising assigns hs_number and the pay link; if we read before those
+  // landed, read again.
   let p = got.data.properties;
-  if (p.hs_invoice_status === "open" && (!p.hs_number || /draft/i.test(p.hs_number))) {
+  if (p.hs_invoice_status === "open" &&
+      (!p.hs_number || /draft/i.test(p.hs_number) || !p.hs_invoice_link)) {
     await sleep(5000);
     got = await readInvoice(id);
     if (got.ok) p = got.data.properties;
@@ -752,7 +792,9 @@ const INVOICE_TYPE_ID = "0-53";
  * Which events start a render. Subscriptions to create on the private app
  * (object type Invoice):
  *   Property changed · branded_pdf_status   → manual (re)generate
- *   Property changed · hs_invoice_status    → auto-generate on finalise
+ *   Property changed · hs_invoice_status    → auto-generate on finalise,
+ *                                             re-issue as PAID when it goes paid
+ *   Property changed · hs_amount_paid       → re-issue as part-paid
  *   Created                                 → optional; only matters if an
  *                                             integration creates invoices already finalised
  * Everything else, including our own status write-backs, is ignored.
@@ -764,7 +806,12 @@ function triggerFor(ev) {
 
   if (type.endsWith(".propertyChange")) {
     if (ev.propertyName === "branded_pdf_status") return ev.propertyValue === STATUS.queued ? "manual" : null;
-    if (ev.propertyName === "hs_invoice_status") return AUTO_ON_FINALISE && ev.propertyValue === "open" ? "finalised" : null;
+    if (ev.propertyName === "hs_invoice_status") {
+      if (ev.propertyValue === "paid") return "payment";
+      return AUTO_ON_FINALISE && ev.propertyValue === "open" ? "finalised" : null;
+    }
+    // Partial payments move hs_amount_paid without changing the status.
+    if (ev.propertyName === "hs_amount_paid") return "payment";
     return null;
   }
   if (type.endsWith(".creation")) return AUTO_ON_FINALISE ? "created" : null;
@@ -900,11 +947,19 @@ function createServer() {
  * anything a webhook delivery missed: the manual flag on any invoice, plus
  * (when auto-generating) invoices finalised since AUTO_SINCE that have no
  * PDF and did not error. Two groups for the auto case because a record with
- * an empty branded_pdf_status is not matched by IN / NOT_IN.
+ * an empty branded_pdf_status is not matched by IN / NOT_IN. One more for
+ * branded invoices that went paid without a PAID re-issue (search can't
+ * compare two properties, so a missed part payment waits for the next event).
  */
 async function reconcile() {
   const filterGroups = [
     { filters: [{ propertyName: "branded_pdf_status", operator: "EQ", value: STATUS.queued }] },
+    { filters: [
+      { propertyName: "hs_invoice_status", operator: "EQ", value: "paid" },
+      { propertyName: "branded_pdf_url", operator: "HAS_PROPERTY" },
+      { propertyName: "branded_pdf_paid_amount", operator: "NOT_HAS_PROPERTY" },
+      { propertyName: "hs_createdate", operator: "GTE", value: String(AUTO_SINCE_MS) },
+    ] },
   ];
   if (AUTO_ON_FINALISE) {
     const open = [

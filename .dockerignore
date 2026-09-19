@@ -6,3 +6,8 @@ node_modules
 *.md
 preview.js
 sample-data.js
+cf
+wrangler.jsonc
+.wrangler
+docker-compose.yml
+Caddyfile

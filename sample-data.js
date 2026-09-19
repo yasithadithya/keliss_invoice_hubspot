@@ -44,12 +44,13 @@ const aussieMax = {
   qty: 2, unitPrice: 415, listPrice: 450, savePerUnit: 35, amount: 830,
 };
 
-module.exports = function sample(stress, lang = "en") {
+// state: awaiting (default) · part_paid · paid · nolink (awaiting, no HubSpot pay link)
+module.exports = function sample(stress, lang = "en", state = "awaiting") {
   const L = i18n.resolve(lang, null);
   const S = i18n.dictionary(L.lang);
   const incoterm = S.incoterms?.DDP;
 
-  return {
+  const data = {
     dealId: null,
     i18n: { lang: L.lang, locale: L.locale, strings: S },
     invoice: {
@@ -124,4 +125,17 @@ module.exports = function sample(stress, lang = "en") {
       photoUrl: null, signatureUrl: null,
     },
   };
+
+  const { invoice, totals } = data;
+  if (state === "nolink") {
+    invoice.payLink = null;
+    invoice.howToPay = S.notes.howToPaySwift;
+  } else if (state === "part_paid" || state === "paid") {
+    invoice.state = state;
+    invoice.statusLabel = S.status[state];
+    totals.paidToDate = state === "paid" ? totals.total : 500;
+    totals.balanceDue = totals.total - totals.paidToDate;
+    if (state === "paid") invoice.howToPay = S.notes.howToPaySwift;
+  }
+  return data;
 };

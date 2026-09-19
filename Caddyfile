@@ -1,0 +1,5 @@
+# $DOMAIN comes from .env (see docker-compose.yml). Caddy fetches and renews the
+# certificate itself; port 80 must be reachable for that.
+{$DOMAIN} {
+	reverse_proxy worker:8080
+}

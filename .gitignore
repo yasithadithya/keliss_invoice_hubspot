@@ -5,3 +5,4 @@ node_modules/
 *.woff2
 *.b64
 poppins.css
+.wrangler/

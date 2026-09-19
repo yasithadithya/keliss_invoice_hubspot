@@ -6,6 +6,7 @@
 //   node preview.js --png      → also write preview.png (full-page raster, easy to eyeball)
 //   node preview.js --lang=fr  → the same invoice in another language (en fr de es it nl pt)
 //   node preview.js --all-langs → one PDF per supported language, preview-<lang>.pdf
+//   node preview.js --state=paid → PAID panel; also part_paid, nolink (no pay link)
 
 const { chromium } = require("playwright");
 const fs = require("fs/promises");
@@ -17,6 +18,13 @@ const stress = process.argv.includes("--stress");
 const png = process.argv.includes("--png");
 const allLangs = process.argv.includes("--all-langs");
 const lang = (process.argv.find((a) => a.startsWith("--lang=")) || "--lang=en").slice(7);
+const state = (process.argv.find((a) => a.startsWith("--state=")) || "--state=awaiting").slice(8);
+
+const STATES = ["awaiting", "part_paid", "paid", "nolink"];
+if (!STATES.includes(state)) {
+  console.error(`Unknown state "${state}". Supported: ${STATES.join(", ")}`);
+  process.exit(1);
+}
 
 if (!allLangs && !SUPPORTED_LANGUAGES.includes(lang)) {
   console.error(`Unknown language "${lang}". Supported: ${SUPPORTED_LANGUAGES.join(", ")}`);
@@ -34,7 +42,7 @@ const langs = allLangs ? SUPPORTED_LANGUAGES : [lang];
     // render in the same document would have nothing left to lay out.
     const page = await browser.newPage({ viewport: { width: 794, height: 1123 }, deviceScaleFactor: 2 });
     await page.setContent(html, { waitUntil: "networkidle" });
-    await page.evaluate(([d]) => window.renderInvoice(d), [sample(stress, code)]);
+    await page.evaluate(([d]) => window.renderInvoice(d), [sample(stress, code, state)]);
     await page.evaluate(() => document.fonts.ready);
 
     const name = langs.length > 1 ? `preview-${code}` : "preview";
@@ -48,5 +56,6 @@ const langs = allLangs ? SUPPORTED_LANGUAGES : [lang];
   }
 
   await browser.close();
-  console.log(`${written.join(", ")} written${stress ? " (stress mode)" : ""}`);
+  console.log(`${written.join(", ")} written${stress ? " (stress mode)" : ""}` +
+    `${state !== "awaiting" ? ` (state ${state})` : ""}`);
 })();

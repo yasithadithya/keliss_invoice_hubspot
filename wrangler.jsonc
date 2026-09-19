@@ -1,0 +1,37 @@
+// Cloudflare Containers deployment — see README "Deploy to Cloudflare".
+//   npx wrangler deploy      (Docker must be running: it builds ./Dockerfile)
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "keliss-invoice",
+  "main": "cf/index.js",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+
+  "containers": [
+    {
+      "class_name": "InvoiceWorker",
+      "image": "./Dockerfile",
+      "max_instances": 1,      // one replica: the queue is in memory
+      "instance_type": "basic" // 1 GiB; use "standard-1" if Chromium runs out of memory
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "INVOICE_WORKER", "class_name": "InvoiceWorker" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["InvoiceWorker"] }],
+
+  // Keeps the container awake (see cf/index.js).
+  "triggers": { "crons": ["*/5 * * * *"] },
+
+  // Non-secret settings. HS_TOKEN and HS_CLIENT_SECRET are secrets:
+  //   npx wrangler secret put HS_TOKEN
+  //   npx wrangler secret put HS_CLIENT_SECRET
+  "vars": {
+    // Fill in after the first deploy prints your workers.dev URL, then deploy again.
+    // Must match the private app's webhook Target URL character for character.
+    "WEBHOOK_URL": "",
+    "AUTO_ON_FINALISE": "true",
+    "AUTO_SINCE": "2026-09-16",
+    "RECONCILE_MS": "600000"
+  }
+}

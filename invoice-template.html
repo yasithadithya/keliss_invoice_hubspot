@@ -173,6 +173,8 @@
   .paid-mark { font-family: "Space Grotesk", sans-serif; font-size: 11mm; font-weight: 700; letter-spacing: .1em; color: #8fd0a8; }
 
   .totals { background: var(--offwhite); border: .3mm solid var(--hair); padding: 6mm; }
+  /* No pay panel (draft, void, no pay link): totals keep their right-hand column. */
+  .pay-panel.hidden + .totals { grid-column: 2; }
   .totals .row { display: flex; justify-content: space-between; padding: 2.5mm 0; border-bottom: .3mm solid var(--hair); }
   .totals .row:last-of-type { border-bottom: 0; }
   .totals #row-discount { color: var(--sand); }
@@ -285,7 +287,7 @@
       <div class="pay-panel" id="pay-panel">
         <h3 id="pay-title">Pay online</h3>
         <p id="pay-blurb"></p>
-        <a class="pay-cta" id="pay-cta" href="#">
+        <a class="pay-cta" id="pay-cta" href="#" target="_blank" rel="noopener">
           <strong id="pay-amount">—</strong>
           <small id="card-brands"></small>
         </a>
@@ -362,10 +364,11 @@
  *
  * Spec rules implemented here:
  *   - rows hide when zero (discount, fees, tax, savings)
- *   - pay box becomes a PAID panel when paid, disappears on draft and void
+ *   - pay box becomes a PAID panel when paid, disappears on draft and void,
+ *     and on any unpaid invoice without a HubSpot pay link
  *   - draft and void carry a watermark
  *   - missing photo renders a placeholder tile, missing signature a typed name
- *   - part paid adds "Paid to date" and "Balance due" rows
+ *   - part paid and paid add "Paid to date" and "Balance due" rows
  *   - a goods block never splits across pages
  *
  * Wording follows data.i18n.strings (built by i18n.js from the invoice's
@@ -515,6 +518,10 @@ window.renderInvoice = async function (data) {
   const cardBrands = inv.cardBrands || [];
   if (inv.state === "voided" || inv.state === "draft") {
     panel.classList.add("hidden");
+  } else if (inv.state !== "paid" && !inv.payLink) {
+    // No HubSpot pay link: a button that goes nowhere is worse than none.
+    // The notes still point the buyer at the SWIFT details.
+    panel.classList.add("hidden");
   } else if (inv.state === "paid") {
     panel.innerHTML =
       '<div class="paid-panel"><div class="paid-mark">' + esc(t("pay.paidMark", "PAID")) + "</div>" +
@@ -538,7 +545,7 @@ window.renderInvoice = async function (data) {
     set("card-brands", cardBrands.join(" · "));
     show("card-brands", cardBrands.length > 0);
     const cta = document.getElementById("pay-cta");
-    if (inv.payLink) cta.href = inv.payLink; else cta.removeAttribute("href");
+    cta.href = inv.payLink;
   }
 
   /* 07 totals ---------------------------------------------------------- */
@@ -561,7 +568,8 @@ window.renderInvoice = async function (data) {
   show("row-fees", totals.fees > 0);
   show("row-tax", totals.taxes > 0);
 
-  const partPaid = inv.state === "part_paid";
+  // Paid shows them too, so "Balance due €0.00" sits beside the PAID panel.
+  const partPaid = inv.state === "part_paid" || inv.state === "paid";
   show("row-paid", partPaid);
   show("row-balance", partPaid);
   if (partPaid) {

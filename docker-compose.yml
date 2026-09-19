@@ -1,0 +1,32 @@
+# Single-VM deployment (e.g. Oracle Cloud Always Free) — see README "Deploy to an Oracle Cloud VM".
+#   docker compose up -d --build
+#
+# worker  the invoice worker from ./Dockerfile, reachable only inside this network
+# caddy   public HTTPS on 80/443 with an automatic Let's Encrypt certificate for
+#         $DOMAIN, proxying to the worker. HubSpot only delivers webhooks over HTTPS.
+services:
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      PORT: "8080"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - worker
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
