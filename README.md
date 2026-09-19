@@ -101,8 +101,9 @@ fetch("https://api.hubapi.com/crm/v3/objects/invoices/search",{method:"POST",
    - **Create subscription** again → **Invoice** → **Property changed** →
      **Branded PDF** (`branded_pdf_status`) → **Subscribe**.
    - **Create subscription** again → **Invoice** → **Property changed** →
-     **Amount paid** (`hs_amount_paid`) → **Subscribe**. This re-issues the PDF on a
-     part payment (see Payments).
+     **Balance due** (`hs_balance_due`) → **Subscribe**. This re-issues the PDF on a
+     part payment (see Payments). (Not *Amount paid*: it's a calculated property,
+     and HubSpot doesn't offer calculated properties for subscriptions.)
    - Optional, only if an integration creates invoices already finalised:
      **Invoice** → **Created**.
    - **Commit changes.** Subscriptions do nothing until committed. If HubSpot asks
@@ -125,7 +126,7 @@ node worker.js
 |---|---|
 | Invoice status → **Open** (finalised) | Generate. Skipped if the invoice already has a Branded PDF URL, or its last attempt errored. |
 | **Branded PDF** set to **Generate** | Always generate (re-issue), on any invoice, draft included. |
-| Invoice status → **Paid**, or **Amount paid** changes | Re-issue as PAID / part-paid, once per paid amount, only if the invoice already has a branded PDF. |
+| Invoice status → **Paid**, or **Balance due** changes | Re-issue as PAID / part-paid, once per paid amount, only if the invoice already has a branded PDF. |
 | Invoice **Created** (optional subscription) | Read the record; generate only if it is already Open. |
 | Anything else — including the worker's own status write-backs | Ignored. |
 
@@ -180,7 +181,7 @@ The worker then catches up the PDF:
 
 | On the invoice | PDF re-issued as | Note on the deal |
 |---|---|---|
-| Part payment (Amount paid changes, still Open) | "Pay remaining €X", with Paid to date and Balance due rows | `Part payment received — … (balance EUR X)` |
+| Part payment (Balance due drops, still Open) | "Pay remaining €X", with Paid to date and Balance due rows | `Part payment received — … (balance EUR X)` |
 | Paid in full (status → Paid) | PAID panel, Balance due €0.00, no Pay button | `Payment received — … re-issued as PAID` |
 
 The invoice number, file name and Branded PDF URL stay the same; the file is
@@ -335,7 +336,7 @@ has to match what you enter in HubSpot in step 4, character for character.
 Apps** (newer portals: Development → Legacy apps) → your app:
 - **Webhooks** tab → **Edit webhooks** → **Target URL** = the `WEBHOOK_URL` above.
 - Check the three subscriptions from step 6 of "Before the first live run":
-  Invoice status, Branded PDF and Amount paid.
+  Invoice status, Branded PDF and Balance due.
 - **Commit changes.**
 
 **5. Check it**
@@ -390,7 +391,7 @@ there, not in `.env`: `.env` is for running locally only.
 | Files upload 400 | `folderPath` and `folderId` both sent — send one (this uses `folderPath` only) |
 | No Pay button on the PDF | `hs_invoice_link` empty on the invoice — check the worker log line |
 | Pay button opens HubSpot but there's no way to pay | No online payment method on the invoice, or no payment processor connected (always the case in a developer test account) |
-| Invoice paid, PDF still says Awaiting payment | `hs_amount_paid` subscription missing or not committed, or the invoice had no branded PDF before the payment (only branded invoices are re-issued) |
+| Invoice paid, PDF still says Awaiting payment | `hs_balance_due` subscription missing or not committed, or the invoice had no branded PDF before the payment (only branded invoices are re-issued) |
 | Every render ends in **Error** after upgrading | `branded_pdf_paid_amount` property not created in this portal |
 
 ## Language

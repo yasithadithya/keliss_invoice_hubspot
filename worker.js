@@ -794,7 +794,7 @@ const INVOICE_TYPE_ID = "0-53";
  *   Property changed · branded_pdf_status   → manual (re)generate
  *   Property changed · hs_invoice_status    → auto-generate on finalise,
  *                                             re-issue as PAID when it goes paid
- *   Property changed · hs_amount_paid       → re-issue as part-paid
+ *   Property changed · hs_balance_due       → re-issue as part-paid
  *   Created                                 → optional; only matters if an
  *                                             integration creates invoices already finalised
  * Everything else, including our own status write-backs, is ignored.
@@ -810,8 +810,10 @@ function triggerFor(ev) {
       if (ev.propertyValue === "paid") return "payment";
       return AUTO_ON_FINALISE && ev.propertyValue === "open" ? "finalised" : null;
     }
-    // Partial payments move hs_amount_paid without changing the status.
-    if (ev.propertyName === "hs_amount_paid") return "payment";
+    // Partial payments move the balance without changing the status.
+    // hs_amount_paid is calculated, so HubSpot won't offer it as a subscription;
+    // hs_payment_status is the fallback if the portal hides hs_balance_due too.
+    if (["hs_balance_due", "hs_payment_status", "hs_amount_paid"].includes(ev.propertyName)) return "payment";
     return null;
   }
   if (type.endsWith(".creation")) return AUTO_ON_FINALISE ? "created" : null;
