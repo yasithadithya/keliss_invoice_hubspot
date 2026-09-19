@@ -231,7 +231,7 @@
           </div>
           <div class="r">
             <div class="doc-kind" id="doc-kind">COMMERCIAL INVOICE</div>
-            <div class="label" style="margin-top:3mm;color:#a9b6c9">INVOICE NO.</div>
+            <div class="label" id="lbl-invoice-no" style="margin-top:3mm;color:#a9b6c9">INVOICE NO.</div>
             <div class="doc-no display" id="doc-no">—</div>
             <div><span class="chip" id="chip">AWAITING PAYMENT</span></div>
           </div>
@@ -240,22 +240,22 @@
 
       <!-- 02 dates -->
       <div class="meta">
-        <div><div class="label">DATE ISSUED</div><div class="value" id="issued">—</div></div>
-        <div><div class="label">PAYMENT DUE</div><div class="value" id="due">—</div></div>
-        <div><div class="label">CURRENCY</div><div class="value" id="currency">—</div></div>
+        <div><div class="label" id="lbl-issued">DATE ISSUED</div><div class="value" id="issued">—</div></div>
+        <div><div class="label" id="lbl-due">PAYMENT DUE</div><div class="value" id="due">—</div></div>
+        <div><div class="label" id="lbl-currency">CURRENCY</div><div class="value" id="currency">—</div></div>
       </div>
     </div>
 
     <!-- 03 parties -->
     <div class="parties" id="blk-parties">
       <div>
-        <div class="label">SELLER</div>
+        <div class="label" id="lbl-seller">SELLER</div>
         <div class="party-name" id="seller-name"></div>
         <div id="seller-lines"></div>
         <div class="party-line" id="seller-reg"></div>
       </div>
       <div>
-        <div class="label">BILL TO</div>
+        <div class="label" id="lbl-bill-to">BILL TO</div>
         <div class="party-name" id="bill-name">—</div>
         <div class="party-line attn hidden" id="bill-attn"></div>
         <div id="bill-lines"></div>
@@ -264,18 +264,18 @@
 
     <!-- 04 trade terms -->
     <div class="terms" id="blk-terms">
-      <div><div class="label">INCOTERMS</div><div class="value" id="incoterm">—</div></div>
-      <div><div class="label">DESTINATION</div><div class="value" id="destination">—</div></div>
-      <div><div class="label">LEAD TIME</div><div class="value" id="lead-time">—</div></div>
-      <div><div class="label">PAYMENT TERMS</div><div class="value" id="payment-terms">—</div></div>
+      <div><div class="label" id="lbl-incoterm">INCOTERMS</div><div class="value" id="incoterm">—</div></div>
+      <div><div class="label" id="lbl-destination">DESTINATION</div><div class="value" id="destination">—</div></div>
+      <div><div class="label" id="lbl-lead-time">LEAD TIME</div><div class="value" id="lead-time">—</div></div>
+      <div><div class="label" id="lbl-payment-terms">PAYMENT TERMS</div><div class="value" id="payment-terms">—</div></div>
     </div>
 
     <!-- 05 goods -->
     <div id="blk-goods-head">
-      <div class="section-head"><h2>Goods</h2></div>
+      <div class="section-head"><h2 id="goods-title">Goods</h2></div>
       <div class="cols grid5">
-        <div>PRODUCT</div><div>MODEL &amp; SPECIFICATION</div>
-        <div class="r">QTY</div><div class="r">UNIT PRICE</div><div class="r">AMOUNT</div>
+        <div id="col-product">PRODUCT</div><div id="col-spec">MODEL &amp; SPECIFICATION</div>
+        <div class="r" id="col-qty">QTY</div><div class="r" id="col-unit">UNIT PRICE</div><div class="r" id="col-amount">AMOUNT</div>
       </div>
     </div>
     <div id="items"></div>
@@ -283,26 +283,26 @@
     <!-- 06 + 07 -->
     <div class="settle" id="blk-settle">
       <div class="pay-panel" id="pay-panel">
-        <h3>Pay online</h3>
+        <h3 id="pay-title">Pay online</h3>
         <p id="pay-blurb"></p>
         <a class="pay-cta" id="pay-cta" href="#">
           <strong id="pay-amount">—</strong>
           <small id="card-brands"></small>
         </a>
-        <div class="pay-foot">Or transfer to the bank account below, quoting invoice <span id="pay-ref">—</span></div>
+        <div class="pay-foot" id="pay-foot"></div>
       </div>
 
       <div class="totals">
-        <div class="row"><span>Gross value</span><span id="t-gross">—</span></div>
+        <div class="row"><span id="lbl-gross">Gross value</span><span id="t-gross">—</span></div>
         <div class="row" id="row-discount"><span id="t-discount-label">Trade discount</span><span id="t-discount">—</span></div>
-        <div class="row"><span>Subtotal</span><span id="t-subtotal">—</span></div>
-        <div class="row" id="row-fees"><span>Shipping, duties &amp; handling</span><span id="t-fees">—</span></div>
-        <div class="row" id="row-tax"><span>Tax</span><span id="t-tax">—</span></div>
-        <div class="row hidden" id="row-paid"><span>Paid to date</span><span id="t-paid">—</span></div>
-        <div class="row hidden" id="row-balance"><span>Balance due</span><span id="t-balance">—</span></div>
-        <div class="grand"><span class="label">TOTAL DUE</span><strong id="t-total">—</strong></div>
+        <div class="row"><span id="lbl-subtotal">Subtotal</span><span id="t-subtotal">—</span></div>
+        <div class="row" id="row-fees"><span id="lbl-fees">Shipping, duties &amp; handling</span><span id="t-fees">—</span></div>
+        <div class="row" id="row-tax"><span id="lbl-tax">Tax</span><span id="t-tax">—</span></div>
+        <div class="row hidden" id="row-paid"><span id="lbl-paid">Paid to date</span><span id="t-paid">—</span></div>
+        <div class="row hidden" id="row-balance"><span id="lbl-balance">Balance due</span><span id="t-balance">—</span></div>
+        <div class="grand"><span class="label" id="lbl-total">TOTAL DUE</span><strong id="t-total">—</strong></div>
         <div class="saved" id="row-saved">
-          <span class="label">YOU SAVED</span>
+          <span class="label" id="lbl-saved">YOU SAVED</span>
           <span><strong id="t-saved">—</strong> <span id="t-saved-pct" style="font-size:2.7mm"></span></span>
         </div>
       </div>
@@ -311,14 +311,14 @@
     <!-- 08 + 09 -->
     <div class="footer-grid" id="blk-notes">
       <div>
-        <div class="label">BANK TRANSFER</div>
+        <div class="label" id="lbl-bank">BANK TRANSFER</div>
         <dl class="kv" id="bank"></dl>
       </div>
       <div class="delivery">
-        <div class="label">PAYMENT &amp; DELIVERY</div>
-        <p><strong>How to pay.</strong> <span id="how-to-pay"></span></p>
-        <p><strong>Delivery.</strong> <span id="delivery-note"></span></p>
-        <p><strong>Dispatch.</strong> <span id="dispatch-note"></span></p>
+        <div class="label" id="lbl-delivery">PAYMENT &amp; DELIVERY</div>
+        <p><strong id="lbl-how-to-pay">How to pay.</strong> <span id="how-to-pay"></span></p>
+        <p><strong id="lbl-delivery-note">Delivery.</strong> <span id="delivery-note"></span></p>
+        <p><strong id="lbl-dispatch">Dispatch.</strong> <span id="dispatch-note"></span></p>
         <p id="policy-line"></p>
         <p id="comments" class="hidden"></p>
       </div>
@@ -338,7 +338,7 @@
         <div class="sig">
           <div class="sig-line" id="sig-mark"></div>
           <div class="label" style="color:#a9b6c9;margin-top:2mm">
-            AUTHORISED SIGNATURE · <span id="sig-date">—</span>
+            <span id="sig-label">AUTHORISED SIGNATURE</span> · <span id="sig-date">—</span>
           </div>
         </div>
       </div>
@@ -350,7 +350,7 @@
   <template id="cont-head-tpl">
     <div class="cont-head">
       <div class="cont-mark"><span>K</span>ELISS</div>
-      <div class="cont-ref">INVOICE <b class="cont-no"></b> · <span class="cont-page"></span></div>
+      <div class="cont-ref"><span class="cont-label">INVOICE</span> <b class="cont-no"></b> · <span class="cont-page"></span></div>
     </div>
   </template>
 
@@ -367,9 +367,18 @@
  *   - missing photo renders a placeholder tile, missing signature a typed name
  *   - part paid adds "Paid to date" and "Balance due" rows
  *   - a goods block never splits across pages
+ *
+ * Wording follows data.i18n.strings (built by i18n.js from the invoice's
+ * HubSpot Language field). Every label below also exists in English in the
+ * markup, so the template still renders on its own if no dictionary is passed.
  */
+// Set by renderInvoice, read again by paginate() for the continuation header.
+let STR = {};
+
 window.renderInvoice = async function (data) {
   const cur = data.invoice.currency || "EUR";
+  STR = (data.i18n && data.i18n.strings) || {};
+  if (data.i18n && data.i18n.lang) document.documentElement.lang = data.i18n.lang;
   const money = (n) => new Intl.NumberFormat(data.invoice.numberLocale || "en-IE",
     { style: "currency", currency: cur }).format(Number(n || 0));
   const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text ?? ""; };
@@ -377,11 +386,44 @@ window.renderInvoice = async function (data) {
   const has = (v) => v !== null && v !== undefined && v !== "";
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // t("totals.gross", "Gross value") — the fallback is what the markup already
+  // says, so an untranslated key degrades to English rather than to blank.
+  const t = (path, fallback) => {
+    const hit = path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), STR);
+    return hit === undefined || hit === null || hit === "" ? fallback : hit;
+  };
+  // Mirrors i18n.fmt() in the worker: an unfilled placeholder stays visible.
+  const fmt = (template, vars) => String(template ?? "").replace(/\{(\w+)\}/g,
+    (match, key) => (vars[key] === undefined || vars[key] === null ? match : String(vars[key])));
 
   const inv = data.invoice;
-  const t = data.totals || {};
+  const totals = data.totals || {};
   const co = data.company || {};
   const rep = data.rep || {};
+
+  /* 00 static labels --------------------------------------------------- */
+  for (const [id, path] of [
+    ["lbl-invoice-no", "header.invoiceNo"],
+    ["lbl-issued", "meta.issued"], ["lbl-due", "meta.due"], ["lbl-currency", "meta.currency"],
+    ["lbl-seller", "parties.seller"], ["lbl-bill-to", "parties.billTo"],
+    ["lbl-incoterm", "terms.incoterms"], ["lbl-destination", "terms.destination"],
+    ["lbl-lead-time", "terms.leadTime"], ["lbl-payment-terms", "terms.paymentTerms"],
+    ["goods-title", "goods.title"], ["col-product", "goods.product"], ["col-spec", "goods.spec"],
+    ["col-qty", "goods.qty"], ["col-unit", "goods.unitPrice"], ["col-amount", "goods.amount"],
+    ["pay-title", "pay.title"],
+    ["lbl-gross", "totals.gross"], ["lbl-subtotal", "totals.subtotal"],
+    ["lbl-fees", "totals.fees"], ["lbl-tax", "totals.tax"],
+    ["lbl-paid", "totals.paidToDate"], ["lbl-balance", "totals.balanceDue"],
+    ["lbl-total", "totals.total"], ["lbl-saved", "totals.saved"],
+    ["lbl-bank", "bank.title"], ["lbl-delivery", "delivery.title"],
+    ["lbl-how-to-pay", "delivery.howToPay"], ["lbl-delivery-note", "delivery.delivery"],
+    ["lbl-dispatch", "delivery.dispatch"], ["sig-label", "signature.authorised"],
+  ]) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(path, el.textContent);
+  }
+  document.getElementById("cont-head-tpl").content.querySelector(".cont-label").textContent =
+    t("page.invoice", "INVOICE");
 
   /* 01 header ---------------------------------------------------------- */
   if (co.logoUrl) {
@@ -390,7 +432,8 @@ window.renderInvoice = async function (data) {
   set("legal-name", (co.legalName || "").toUpperCase());
   set("doc-kind", (inv.documentType || "Commercial invoice").toUpperCase());
   set("doc-no", inv.number);
-  set("pay-ref", inv.number);
+  set("pay-foot", fmt(t("pay.transferNote",
+    "Or transfer to the bank account below, quoting invoice {number}"), { number: inv.number || "" }));
   document.getElementById("cont-head-tpl").content.querySelector(".cont-no").textContent = inv.number || "";
 
   const chip = document.getElementById("chip");
@@ -400,7 +443,9 @@ window.renderInvoice = async function (data) {
 
   if (inv.state === "draft" || inv.state === "voided") {
     const wm = document.getElementById("watermark");
-    wm.textContent = inv.state === "draft" ? "DRAFT" : "VOID";
+    wm.textContent = inv.state === "draft"
+      ? t("watermark.draft", "DRAFT")
+      : t("watermark.voided", "VOID");
     wm.className = "watermark " + (inv.state === "draft" ? "draft" : "void");
   }
 
@@ -413,11 +458,15 @@ window.renderInvoice = async function (data) {
   set("seller-name", co.sellerName);
   document.getElementById("seller-lines").innerHTML =
     (co.sellerLines || []).map((l) => '<div class="party-line">' + esc(l) + "</div>").join("");
-  set("seller-reg", co.registrationNo ? "Reg. No. " + co.registrationNo : "");
+  set("seller-reg", co.registrationNo
+    ? fmt(t("parties.regNo", "Reg. No. {no}"), { no: co.registrationNo })
+    : "");
 
   set("bill-name", data.billTo.name || "—");
   show("bill-attn", has(data.billTo.attn));
-  set("bill-attn", data.billTo.attn ? "Attn. " + data.billTo.attn : "");
+  set("bill-attn", data.billTo.attn
+    ? fmt(t("parties.attn", "Attn. {name}"), { name: data.billTo.attn })
+    : "");
   document.getElementById("bill-lines").innerHTML =
     (data.billTo.lines || []).map((l) => '<div class="party-line">' + esc(l) + "</div>").join("") +
     (data.billTo.email
@@ -435,9 +484,9 @@ window.renderInvoice = async function (data) {
   document.getElementById("items").innerHTML = (data.items || []).map((it) => {
     const photo = it.imageUrl
       ? '<img src="' + it.imageUrl + '" alt="">'
-      : '<div class="ph">NO IMAGE</div>';
+      : '<div class="ph">' + esc(t("goods.noImage", "NO IMAGE")) + "</div>";
     const subtitle =
-      (it.sku ? "SKU <strong>" + esc(it.sku) + "</strong>" : "") +
+      (it.sku ? esc(t("goods.sku", "SKU")) + " <strong>" + esc(it.sku) + "</strong>" : "") +
       (it.sku && it.subtitle ? " · " : "") + esc(it.subtitle || "");
     const features = (it.features || []).length
       ? '<ul class="features">' + it.features.map((f) => "<li>" + esc(f) + "</li>").join("") + "</ul>"
@@ -446,7 +495,10 @@ window.renderInvoice = async function (data) {
     const struck = it.listPrice && it.listPrice > it.unitPrice
       ? '<div class="was">' + money(it.listPrice) + "</div>" : "";
     const badge = it.savePerUnit
-      ? '<div class="save">SAVE ' + money(it.savePerUnit) + " EACH</div>" : "";
+      ? '<div class="save">' +
+        esc(fmt(t("goods.saveEach", "SAVE {amount} EACH"), { amount: money(it.savePerUnit) })) +
+        "</div>"
+      : "";
 
     return '<div class="item grid5">' +
       "<div>" + photo + "</div>" +
@@ -465,17 +517,24 @@ window.renderInvoice = async function (data) {
     panel.classList.add("hidden");
   } else if (inv.state === "paid") {
     panel.innerHTML =
-      '<div class="paid-panel"><div class="paid-mark">PAID</div>' +
-      '<p style="color:#c2ccdb;margin-top:3mm">Thank you. This invoice is settled in full; ' +
-      "no further payment is due.</p></div>";
+      '<div class="paid-panel"><div class="paid-mark">' + esc(t("pay.paidMark", "PAID")) + "</div>" +
+      '<p style="color:#c2ccdb;margin-top:3mm">' +
+      esc(t("pay.paidBlurb",
+        "Thank you. This invoice is settled in full; no further payment is due.")) +
+      "</p></div>";
   } else {
     set("pay-blurb",
       (cardBrands.length
-        ? "Card payment is processed securely through our HubSpot checkout."
-        : "Pay securely online through our HubSpot checkout.") +
-      (inv.allowPartial ? " Partial payments are accepted on this invoice." : ""));
-    set("pay-amount", (inv.state === "part_paid" ? "Pay remaining " : "Pay ") +
-      money(has(t.balanceDue) ? t.balanceDue : t.total));
+        ? t("pay.blurbCard", "Card payment is processed securely through our HubSpot checkout.")
+        : t("pay.blurbOnline", "Pay securely online through our HubSpot checkout.")) +
+      (inv.allowPartial
+        ? t("pay.partialNote", " Partial payments are accepted on this invoice.")
+        : ""));
+    set("pay-amount", fmt(
+      inv.state === "part_paid"
+        ? t("pay.payRemaining", "Pay remaining {amount}")
+        : t("pay.payNow", "Pay {amount}"),
+      { amount: money(has(totals.balanceDue) ? totals.balanceDue : totals.total) }));
     set("card-brands", cardBrands.join(" · "));
     show("card-brands", cardBrands.length > 0);
     const cta = document.getElementById("pay-cta");
@@ -483,36 +542,43 @@ window.renderInvoice = async function (data) {
   }
 
   /* 07 totals ---------------------------------------------------------- */
-  set("t-gross", money(t.gross));
-  set("t-discount-label", "Trade discount" + (t.discountPct ? " (" + t.discountPct + "%)" : ""));
-  set("t-discount", "−" + money(t.discounts));
-  set("t-subtotal", money(t.subtotal));
-  set("t-fees", money(t.fees));
-  set("t-tax", money(t.taxes));
-  set("t-total", money(t.total));
-  set("t-saved", money(t.discounts));
-  set("t-saved-pct", t.discountPct ? t.discountPct + "% off list" : "");
+  set("t-gross", money(totals.gross));
+  set("t-discount-label", totals.discountPct
+    ? fmt(t("totals.discountPct", "Trade discount ({pct}%)"), { pct: totals.discountPct })
+    : t("totals.discount", "Trade discount"));
+  set("t-discount", "−" + money(totals.discounts));
+  set("t-subtotal", money(totals.subtotal));
+  set("t-fees", money(totals.fees));
+  set("t-tax", money(totals.taxes));
+  set("t-total", money(totals.total));
+  set("t-saved", money(totals.discounts));
+  set("t-saved-pct", totals.discountPct
+    ? fmt(t("totals.savedPct", "{pct}% off list"), { pct: totals.discountPct })
+    : "");
 
-  show("row-discount", t.discounts > 0);
-  show("row-saved", t.discounts > 0);
-  show("row-fees", t.fees > 0);
-  show("row-tax", t.taxes > 0);
+  show("row-discount", totals.discounts > 0);
+  show("row-saved", totals.discounts > 0);
+  show("row-fees", totals.fees > 0);
+  show("row-tax", totals.taxes > 0);
 
   const partPaid = inv.state === "part_paid";
   show("row-paid", partPaid);
   show("row-balance", partPaid);
   if (partPaid) {
-    set("t-paid", money(t.paidToDate));
-    set("t-balance", money(t.balanceDue));
+    set("t-paid", money(totals.paidToDate));
+    set("t-balance", money(totals.balanceDue));
   }
 
   /* 08 bank ------------------------------------------------------------ */
   const bank = data.bank || {};
   document.getElementById("bank").innerHTML = [
-    ["Account name", bank.accountName], ["Account number", bank.accountNumber],
-    ["Bank", bank.bank], ["Address", bank.address],
-    ["SWIFT / BIC", bank.swift], ["Routing", bank.routing],
-    ["Currencies", bank.currencies],
+    [t("bank.accountName", "Account name"), bank.accountName],
+    [t("bank.accountNumber", "Account number"), bank.accountNumber],
+    [t("bank.bank", "Bank"), bank.bank],
+    [t("bank.address", "Address"), bank.address],
+    [t("bank.swift", "SWIFT / BIC"), bank.swift],
+    [t("bank.routing", "Routing"), bank.routing],
+    [t("bank.currencies", "Currencies"), bank.currencies],
   ].filter(([, v]) => has(v))
    .map(([k, v]) => "<dt>" + esc(k) + "</dt><dd>" + esc(v) + "</dd>").join("");
 
@@ -604,7 +670,8 @@ function paginate() {
       if (g.goods) {
         const again = goodsHead.cloneNode(true);
         again.removeAttribute("id");
-        again.querySelector("h2").textContent = "Goods (continued)";
+        again.querySelector("h2").textContent =
+          (STR.goods && STR.goods.titleContinued) || "Goods (continued)";
         cur.flow.appendChild(again);
       }
       g.nodes.forEach((n) => cur.flow.appendChild(n));
@@ -623,8 +690,10 @@ function paginate() {
   }
 
   const all = [...sheets.children];
-  all.forEach((s, i) => s.querySelectorAll(".cont-page")
-    .forEach((p) => { p.textContent = "PAGE " + (i + 1) + " OF " + all.length; }));
+  const pageOf = (STR.page && STR.page.pageOf) || "PAGE {page} OF {pages}";
+  all.forEach((s, i) => s.querySelectorAll(".cont-page").forEach((p) => {
+    p.textContent = pageOf.replace("{page}", i + 1).replace("{pages}", all.length);
+  }));
   $("parts").remove();
 }
 </script>

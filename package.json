@@ -2,7 +2,7 @@
   "name": "keliss-invoice-worker",
   "version": "1.0.0",
   "private": true,
-  "description": "Polls HubSpot for finalised invoices flagged Branded PDF = Generate, renders a KELISS-branded PDF with Playwright, uploads it to File Manager, attaches it to the invoice and deal, and writes the URL + status back.",
+  "description": "Renders a KELISS-branded PDF the moment a HubSpot invoice is finalised or flagged Branded PDF = Generate (webhook-driven, with a safety-net search), uploads it to File Manager, attaches it to the invoice and deal, and writes the URL + status back.",
   "main": "worker.js",
   "scripts": {
     "start": "node worker.js",

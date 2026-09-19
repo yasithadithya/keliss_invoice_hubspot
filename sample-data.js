@@ -1,5 +1,11 @@
 // Sample payloads for offline template work. Shared by preview.js.
-// module.exports(stress) → a full renderInvoice() payload.
+// module.exports(stress, lang) → a full renderInvoice() payload.
+//
+// The strings block is built by i18n.js, exactly as the worker builds it, so
+// the preview shows the same wording a real invoice in that language would.
+
+const i18n = require("./i18n.js");
+const CONFIG = require("./config.js");
 
 const aussieLux = {
   name: "AussieLux Deluxe",
@@ -38,17 +44,48 @@ const aussieMax = {
   qty: 2, unitPrice: 415, listPrice: 450, savePerUnit: 35, amount: 830,
 };
 
-module.exports = function sample(stress) {
+module.exports = function sample(stress, lang = "en") {
+  const L = i18n.resolve(lang, null);
+  const S = i18n.dictionary(L.lang);
+  const incoterm = S.incoterms?.DDP;
+
   return {
     dealId: null,
+    i18n: { lang: L.lang, locale: L.locale, strings: S },
     invoice: {
-      number: "KLS-500001", status: "awaiting payment",
-      issuedAt: "2026-09-04", dueAt: "2026-09-14", currency: "EUR",
-      incoterms: "DDP — duty paid",
+      number: "KLS-500001",
+      documentType: S.documentType,
+      state: "awaiting",
+      statusLabel: S.status.awaiting,
+      currency: "EUR", currencyLabel: "EUR €", numberLocale: L.locale,
+      issuedAtLabel: new Intl.DateTimeFormat(L.dateLocale,
+        { day: "numeric", month: "long", year: "numeric" }).format(new Date("2026-09-04")),
+      dueAtLabel: new Intl.DateTimeFormat(L.dateLocale,
+        { day: "numeric", month: "long", year: "numeric" }).format(new Date("2026-09-14")),
+      signatureDateLabel: i18n.signatureDate(new Intl.DateTimeFormat(L.dateLocale,
+        { day: "numeric", month: "short", year: "numeric" }).format(new Date("2026-09-04")), L.lang),
+      incotermLabel: incoterm?.label || "DDP — duty paid",
       destination: stress
         ? "Saint-Jean-de-la-Ruelle, Centre-Val de Loire, France"
         : "Villemandeur, France",
-      leadTime: "12 days from payment", paymentTerms: "Net 10 days",
+      leadTimeLabel: i18n.fmt(S.notes.leadTime, { days: 12 }),
+      paymentTerms: i18n.fmt(S.notes.netDays, { days: 10 }),
+      payLink: "https://app.hubspot.com/payments/sample",
+      allowPartial: false,
+      cardBrands: ["Visa · Mastercard · Amex"],
+      howToPay: S.notes.howToPayCard,
+      deliveryNote: incoterm?.delivery ||
+        "Door-to-door under DDP terms. Import duties, customs clearance and delivery charges are included in the price.",
+      dispatchNote: i18n.fmt(S.notes.dispatchWithLead, { days: 12 }),
+      comments: null,
+    },
+
+    totals: {
+      gross: stress ? 3201 : 1980, discounts: stress ? 210 : 99,
+      subtotal: stress ? 2991 : 1881, fees: 0, taxes: 0,
+      total: stress ? 2991 : 1881, paidToDate: 0,
+      balanceDue: stress ? 2991 : 1881,
+      discountPct: stress ? 7 : 5,
     },
     billTo: {
       name: stress ? "Marie-Christine de la Fontaine-Roubaix" : "Philippe Amar",
@@ -58,6 +95,33 @@ module.exports = function sample(stress) {
            "25 Rue Ambroise Paré", "45700 Villemandeur", "Centre-Val de Loire, France"]
         : ["25 Rue Ambroise Paré", "45700 Villemandeur", "Centre-Val de Loire, France"],
     },
-    items: stress ? [aussieLux, flexaPro, aussieMax] : [aussieLux],
+    items: (stress ? [aussieLux, flexaPro, aussieMax] : [aussieLux]).map((it) => ({
+      ...it,
+      subtitle: it.description,
+      features: it.features,
+      note: it.packNote || null,
+    })),
+
+    company: {
+      legalName: CONFIG.brand.legalName,
+      logoUrl: CONFIG.brand.logoUrl,
+      site: CONFIG.brand.site,
+      sellerName: CONFIG.seller.name,
+      sellerLines: CONFIG.seller.lines,
+      registrationNo: CONFIG.seller.registrationNo,
+      policyLine: i18n.fmt(S.notes.policyLine, {
+        brand: CONFIG.brand.name,
+        url: CONFIG.brand.deliveryPolicyUrl,
+      }),
+      legalLine: CONFIG.legalLine,
+    },
+
+    bank: CONFIG.bankAccounts.EUR,
+
+    rep: {
+      name: "Yasith Adithya", email: "yasith@keliss.com", initials: "YA",
+      title: "Export sales", phone: "+86 138 0000 0000", whatsapp: "+86 138 0000 0000",
+      photoUrl: null, signatureUrl: null,
+    },
   };
 };

@@ -1,0 +1,8 @@
+.env
+.git
+node_modules
+*.pdf
+*.png
+*.md
+preview.js
+sample-data.js
