@@ -161,9 +161,21 @@ would still sit under 10% of the 250,000/day Starter limit.
    **Generated** and the **Branded PDF URL** link is in the sidebar.
 3. Changed something afterwards, or need a fresh copy? Set **Branded PDF** to
    **Generate**. The PDF is re-issued under the same invoice number.
-4. Send with **Actions → Create custom email in your CRM**, attaching the PDF from
-   the deal's Attachments card. (The default "Send invoice email" only carries
-   HubSpot's own plain PDF.)
+4. **Send it yourself. Don't use HubSpot's "Send invoice" button.** HubSpot's own
+   invoice and receipt emails always attach HubSpot's plain invoice PDF, and that
+   can't be changed. Instead: open the deal (or contact) → **Email** → write the
+   message → **Attach** → pick `KELISS_Invoice_<number>.pdf` from the deal's
+   attachments or the `invoices` folder in Files. Or paste the **Branded PDF URL**
+   as a link. The email is logged on the contact and deal timeline as usual.
+5. **When the buyer pays**, whether through the Pay button or a payment you record,
+   wait about 15 seconds. The branded PDF is re-issued as **PAID** (or part-paid)
+   under the same file name and URL, and a "Payment received" note appears on the
+   deal. To send a receipt, repeat step 4: the attachment is now the PAID copy.
+   - When recording a payment by hand, don't let HubSpot email its own receipt
+     (untick the send/notify option if the dialog shows one). That email carries
+     HubSpot's PDF, not the branded one.
+   - The Branded PDF URL always serves the latest version. A link sent earlier will
+     show PAID once the invoice is paid.
 
 If **Branded PDF** shows **Error**, the reason is in the **Branded PDF error**
 property on the same record — usually a product missing data, not a system fault.
