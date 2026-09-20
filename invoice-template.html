@@ -189,6 +189,8 @@
   .kv dt { color: var(--muted); }
   .kv dd { margin: 0; font-weight: 600; }
   .delivery p { margin: 0 0 3mm; color: var(--muted); }
+  /* The rep's own comment keeps the line breaks they typed. */
+  #comments { white-space: pre-line; }
   .delivery strong { color: var(--ink); }
 
   /* 10 / 11 — signature + legal ------------------------------------------- */
@@ -582,6 +584,7 @@ window.renderInvoice = async function (data) {
   document.getElementById("bank").innerHTML = [
     [t("bank.accountName", "Account name"), bank.accountName],
     [t("bank.accountNumber", "Account number"), bank.accountNumber],
+    [t("bank.accountType", "Account type"), bank.accountType],
     [t("bank.bank", "Bank"), bank.bank],
     [t("bank.address", "Address"), bank.address],
     [t("bank.swift", "SWIFT / BIC"), bank.swift],

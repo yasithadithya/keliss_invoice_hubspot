@@ -201,6 +201,9 @@ function parseDescription(raw) {
   return out;
 }
 
+/* -------------------------------------------------- bank from the comments */
+const { htmlToText, parseBankFromComments } = require("./comments.js");
+
 /**
  * HubSpot stores invoice dates as end-of-day timestamps, so formatting in UTC
  * can land on the wrong calendar day. Always format in the portal time zone.
@@ -335,8 +338,19 @@ async function buildPayload(invoice) {
   }
 
   const currency = p.hs_currency || "EUR";
-  const bank = CONFIG.bankAccounts[currency];
+
+  // An account pasted into the comments is the rep's explicit choice for this
+  // invoice, so it wins over config.js — and it prints instead of appearing
+  // twice, once in the bank box and once in the comment.
+  const fromComments = parseBankFromComments(htmlToText(p.hs_comments));
+  const bank = fromComments.bank || CONFIG.bankAccounts[currency];
   if (!bank) throw new Error(`No bank account configured for ${currency} — cannot issue this invoice`);
+  if (fromComments.bank) {
+    console.log(`  ↳ bank account read from the invoice comments (${bank.bank || bank.accountNumber})`);
+    if (bank.currencies && !bank.currencies.toUpperCase().includes(currency)) {
+      console.warn(`  ↳ that account does not list ${currency} among its currencies`);
+    }
+  }
 
   const incoterm = S.incoterms?.[p.keliss_incoterm] || CONFIG.incoterms[p.keliss_incoterm] || null;
   const leadDays = num(p.keliss_lead_time_days);
@@ -398,7 +412,7 @@ async function buildPayload(invoice) {
       dispatchNote: leadDays
         ? i18n.fmt(S.notes.dispatchWithLead, { days: leadDays })
         : S.notes.dispatchNoLead,
-      comments: (p.hs_comments || "").replace(/<[^>]+>/g, "").trim() || null,
+      comments: fromComments.comments,
     },
 
     totals: {
@@ -461,12 +475,38 @@ async function buildPayload(invoice) {
 
 const imageCache = new Map();
 
+const MIME_BY_EXT = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+};
+
+/**
+ * Rep photos and signatures live in the repo (assets/reps/…), so they ship with
+ * the image and never depend on a File Manager URL staying alive. Anything that
+ * isn't http(s) is read from disk, relative to this file.
+ */
+async function readLocalImage(ref) {
+  const file = path.resolve(__dirname, ref);
+  const type = MIME_BY_EXT[path.extname(file).toLowerCase()];
+  if (!type) throw new Error(`unsupported image type: ${path.extname(file) || "(none)"}`);
+  return `data:${type};base64,${(await fs.readFile(file)).toString("base64")}`;
+}
+
 async function fetchImageAsDataUri(url) {
   if (!url) return null;
   if (imageCache.has(url)) return imageCache.get(url);
 
   let dataUri = null;
   try {
+    if (!/^https?:\/\//i.test(url)) {
+      dataUri = await readLocalImage(url);
+      imageCache.set(url, dataUri);
+      return dataUri;
+    }
     // Try authenticated first, then plain — hubfs URLs can be either.
     for (const headers of [{ Authorization: `Bearer ${TOKEN}` }, {}]) {
       const res = await fetch(url, { headers });
@@ -485,13 +525,61 @@ async function fetchImageAsDataUri(url) {
   return dataUri;
 }
 
+/**
+ * No HubSpot API exposes a user's profile photo — not owners, not the users
+ * object (92 properties, none of them an image). The app itself serves it from
+ * a public URL keyed by the md5 of the lowercased email, which is what the
+ * owner column in the CRM renders. It is only 80×80, so a file in assets/reps/
+ * still prints sharper; this is the no-setup fallback.
+ */
+const avatarUrl = (email) =>
+  `https://app.hubspot.com/userpreferences/v1/avatar/${
+    crypto.createHash("md5").update(String(email).trim().toLowerCase()).digest("hex")}`;
+
+const sha1 = (buf) => crypto.createHash("sha1").update(buf).digest("hex");
+const avatarCache = new Map();
+// A user with no photo gets a grey silhouette that is byte-identical for
+// everyone, so one fetch for an address that cannot exist tells us what "no
+// photo" looks like. Printing that silhouette would be worse than the initials.
+let placeholderHash = null;
+
+async function fetchAvatar(email) {
+  if (!email) return null;
+  if (avatarCache.has(email)) return avatarCache.get(email);
+
+  let dataUri = null;
+  try {
+    if (placeholderHash === null) {
+      const probe = await fetch(avatarUrl("no-such-user.keliss-invoice@example.invalid"));
+      placeholderHash = probe.ok ? sha1(Buffer.from(await probe.arrayBuffer())) : "";
+    }
+    const res = await fetch(avatarUrl(email));
+    if (res.ok) {
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (sha1(buf) === placeholderHash) {
+        console.warn(`  ↳ no HubSpot profile photo for ${email}, printing initials`);
+      } else {
+        dataUri = `data:${res.headers.get("content-type") || "image/png"};base64,${buf.toString("base64")}`;
+      }
+    }
+  } catch (err) {
+    console.warn(`  ↳ avatar fetch failed (${err.message}), printing initials`);
+  }
+
+  avatarCache.set(email, dataUri);
+  return dataUri;
+}
+
 async function embedImages(payload) {
   const rep = payload.rep;
   await Promise.all([
     ...payload.items.map(async (item) => {
       item.imageUrl = await fetchImageAsDataUri(item.imageUrl);
     }),
-    (async () => { rep.photoUrl = await fetchImageAsDataUri(rep.photoUrl); })(),
+    // reps.json wins; the HubSpot avatar is the fallback.
+    (async () => {
+      rep.photoUrl = (await fetchImageAsDataUri(rep.photoUrl)) || (await fetchAvatar(rep.email));
+    })(),
     (async () => { rep.signatureUrl = await fetchImageAsDataUri(rep.signatureUrl); })(),
   ]);
   return payload;

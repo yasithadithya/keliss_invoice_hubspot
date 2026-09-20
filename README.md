@@ -21,6 +21,7 @@ delivery missed, so the HubSpot API budget is ~150 calls a day at idle plus unde
 | `preview.js` | Renders the template to `preview.pdf` (and `--png`) with sample data — no HubSpot needed. |
 | `sample-data.js` | Sample payloads shared by `preview.js`. |
 | `.env.example` | Copy to `.env` and fill in. |
+| `reps.json` + `assets/reps/` | Per-rep details the CRM doesn't hold: initials, title, phone, photo and signature. See "Rep photo and signature". |
 | `Dockerfile` | Production image: Node 22 + Chromium, listens on `$PORT`. |
 | `docker-compose.yml` + `Caddyfile` | Single-VM deployment (worker + HTTPS). See "Deploy to an Oracle Cloud VM". |
 | `wrangler.jsonc` + `cf/index.js` | Cloudflare Containers deployment: a Worker in front of one container built from the Dockerfile. See "Deploy to Cloudflare". |
@@ -180,6 +181,106 @@ would still sit under 10% of the 250,000/day Starter limit.
 If **Branded PDF** shows **Error**, the reason is in the **Branded PDF error**
 property on the same record — usually a product missing data, not a system fault.
 Fix it and set **Generate**; the worker does not retry an errored invoice on its own.
+
+## Bank account from the invoice comments
+
+`config.js` holds the default account per currency. When a rep needs a different
+one, they paste it into the invoice's **Comments**, which is what they already do.
+Anything recognised there replaces the bank box **and is removed from the comment**,
+so the account prints once, formatted, instead of twice.
+
+```
+Account Number: 79829000464
+Account Holder Name: Foshan CaptaiNext Technology Co., Ltd
+Supported Currencies: EUR GBP USD JPY CAD AUD CNH HKD SGD SEK CHF DKK NOK NZD
+Bank Name: DBS BANK (HONG KONG) LIMITED
+Country/Region: HONG KONG, CHINA
+Bank Address: 11th Floor, The Center, 99 Queen's Road Central, Central, Hong Kong
+Account Type: Current
+Swift Code/BIC: DHBKHKHH (DHBKHKHHXXX if 11 characters are required)
+Bank Code: 016
+Branch Code: 478
+```
+
+Everything else in the comment — lead time, shipping terms, links — prints as
+written, with the rep's own line breaks.
+
+| Label | Prints as | Also accepted |
+|---|---|---|
+| Account Number | Account number | Account No, IBAN |
+| Account Holder Name | Account name | Account Name, Account Holder, Beneficiary |
+| Bank Name | Bank | Bank |
+| Bank Address | Address | Address |
+| Country/Region | folded into Address, unless it's already there | Country |
+| Swift Code/BIC | SWIFT / BIC | Swift Code, Swift / BIC Code, BIC |
+| Account Type | Account type | — |
+| Supported Currencies | Currencies (codes only) | Accepted Currencies, Currencies |
+| Bank Code + Branch Code | Routing, as `Bank 016 · Branch 478` | Routing Number, Sort Code |
+
+Rules worth knowing:
+
+- **Account Number plus either Bank Name or SWIFT** are the minimum. Anything less
+  is left in the comment untouched, so a stray "Account Number:" can't empty the
+  bank box.
+- Labels are matched **anywhere**, not only at the start of a line, because reps
+  often run two into one paragraph. A value ends at the next label or end of line.
+- The comment account **wins over `config.js`**, in any currency. If its currency
+  list doesn't mention the invoice's currency, the worker logs a warning and still
+  prints it: the rep chose that account deliberately.
+- Nothing in the comment → the `config.js` account for the invoice currency, and a
+  currency with no entry there is still a hard stop.
+
+`node test-comments.js` (or `npm test`) runs the parser over fixtures taken from
+real invoices, including the awkward ones.
+
+## Rep photo and signature
+
+The signature band prints the owner's photo as an 18 mm circle and their signature
+above the sand rule. Both come from `reps.json`, keyed by **HubSpot owner ID** (the
+name and email come from HubSpot itself):
+
+```json
+"75446568": {
+  "name": "HAS Jayahe",
+  "initials": "HJ",
+  "title": "Export sales",
+  "phone": "+86 138 0000 0000",
+  "whatsapp": "+86 138 0000 0000",
+  "photoUrl": "assets/reps/hj-photo.jpg",
+  "signatureUrl": "assets/reps/hj-signature.png"
+}
+```
+
+**The photo is automatic.** With `photoUrl` left `null`, the worker prints the rep's
+HubSpot profile picture — the one in the Owner column in the CRM. No API exposes it
+(owners don't carry it, and the users object has 92 properties, none an image), so
+the worker reads the same public URL the HubSpot app itself uses,
+`app.hubspot.com/userpreferences/v1/avatar/<md5 of the lowercased email>`. No token
+is needed and it doesn't count against the API budget. Each photo is fetched once
+per process.
+
+Two things follow from that. The avatars are **80×80**, which is soft at 18 mm, so
+set `photoUrl` to a file when you want a rep to look sharp. And a rep with **no**
+photo in HubSpot gets a grey silhouette from that URL, which the worker detects and
+replaces with the initials tile rather than printing it.
+
+Put files in `assets/reps/` and commit them: they're baked into the image, so a
+render never waits on a URL or breaks when a File Manager link changes. A full
+`https://…` URL still works in either field. Anything else is read from disk,
+relative to the repo root.
+
+- **Photo:** square, at least 400×400, JPG or PNG. It's cropped to a circle.
+- **Signature: PNG with a transparent background.** It is recoloured to solid white
+  to read on the navy band, so a JPG or a white-background PNG prints as a white
+  block. Scan the signature, cut out the background, save as PNG.
+
+Leave either `null` and the invoice falls back to a sand initials tile and the rep's
+typed name. `assets/reps/README.md` repeats this next to the files.
+
+Owner IDs differ between portals: `curl -s https://api.hubapi.com/crm/v3/owners \
+-H "Authorization: Bearer $HS_TOKEN"` lists the live ones. `initials` is printed in
+the invoice number (`KLS-HJ-202784`), so agree them with the reps before going live —
+they're issued once per invoice and never renumbered.
 
 ## Payments
 
