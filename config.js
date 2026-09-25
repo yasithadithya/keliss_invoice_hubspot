@@ -36,27 +36,28 @@ module.exports = {
   /**
    * One entry per currency. A currency with no entry is a hard stop — the
    * generator must not print an invoice the buyer cannot pay.
+   *
+   * EUR, USD and AUD are all settled through the same multi-currency account,
+   * so they share one entry. A currency with its own account gets its own
+   * object here rather than a reference to this one.
    */
-  bankAccounts: {
-    EUR: {
+  bankAccounts: (() => {
+    const captainextHongKong = {
       accountName: "CAPTAINEXT GROUP LIMITED",
       accountNumber: "63001410482",
       bank: "JPMorgan Chase Bank N.A., Hong Kong Branch",
       address: "Chater House, 8 Connaught Road, Central, Hong Kong",
       swift: "CHASHKHH (CHASHKHHXXX)",
       routing: "007863 · Bank 007 · Branch 863",
-      currencies: "EUR € · USD $",
-    },
-    USD: {
-      accountName: "CAPTAINEXT GROUP LIMITED",
-      accountNumber: "63001410482",
-      bank: "JPMorgan Chase Bank N.A., Hong Kong Branch",
-      address: "Chater House, 8 Connaught Road, Central, Hong Kong",
-      swift: "CHASHKHH (CHASHKHHXXX)",
-      routing: "007863 · Bank 007 · Branch 863",
-      currencies: "EUR € · USD $",
-    },
-  },
+      // Prints in the bank box, so the buyer can see the account takes their currency.
+      currencies: "EUR € · USD $ · AUD A$",
+    };
+    return {
+      EUR: captainextHongKong,
+      USD: captainextHongKong,
+      AUD: captainextHongKong,
+    };
+  })(),
 
   /**
    * One approved paragraph per incoterm. `label` prints in the trade-terms box,

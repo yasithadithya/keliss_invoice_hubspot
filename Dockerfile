@@ -15,7 +15,9 @@ RUN npm ci --omit=dev \
  && chmod -R a+rX /ms-playwright \
  && rm -rf /var/lib/apt/lists/*
 
-COPY worker.js config.js i18n.js reps.json invoice-template.html ./
+COPY worker.js comments.js config.js i18n.js reps.json invoice-template.html ./
+# Rep photos and signatures referenced from reps.json by path.
+COPY assets ./assets
 
 USER node
 EXPOSE 8080

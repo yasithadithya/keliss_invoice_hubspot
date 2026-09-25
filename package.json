@@ -6,7 +6,8 @@
   "main": "worker.js",
   "scripts": {
     "start": "node worker.js",
-    "preview": "node preview.js"
+    "preview": "node preview.js",
+    "test": "node test-comments.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
