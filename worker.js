@@ -244,7 +244,17 @@ function deriveState(status, billed, balance) {
   return "awaiting";
 }
 
-const CURRENCY_LABELS = { EUR: "EUR €", USD: "USD $", GBP: "GBP £", AUD: "AUD A$" };
+function withCheckoutRedirect(link) {
+  try {
+    const url = new URL(link);
+    url.searchParams.set("checkoutRedirect", "true");
+    return url.toString();
+  } catch {
+    return link;
+  }
+}
+
+const CURRENCY_LABELS ={ EUR: "EUR €", USD: "USD $", GBP: "GBP £", AUD: "AUD A$" };
 
 async function buildPayload(invoice) {
   const id = invoice.id;
@@ -364,7 +374,11 @@ async function buildPayload(invoice) {
   const cardBrands = methods.map((m) => CONFIG.cardBrandLabels[m]).filter(Boolean);
 
   const state = deriveState(p.hs_invoice_status, billed, balance);
-  const payLink = p.hs_invoice_link || null;
+  // checkoutRedirect=true makes HubSpot's invoice page open a fresh checkout
+  // session on load instead of showing the invoice — the same link HubSpot's
+  // own "pay invoice" emails use. Checkout session URLs expire, so they can't
+  // be printed into the PDF directly.
+  const payLink = p.hs_invoice_link ? withCheckoutRedirect(p.hs_invoice_link) : null;
   const payable = state === "awaiting" || state === "part_paid";
   if (payable) {
     if (!payLink) console.warn("  ↳ no hs_invoice_link — pay button hidden");
